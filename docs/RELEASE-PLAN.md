@@ -14,18 +14,17 @@ archives, Rust API documentation on docs.rs, code fixes, and embedded data chang
 need a new crate version to reach registry consumers. Existing published archives
 and versioned docs.rs pages do not change when main changes.
 
-If shipping the existing `kernel-seccomp` broken-pipe fix and approved packaged
-documentation, recommend **0.3.2 for all five workspace crates**, subject to gates
+The authorized candidate now includes the existing `kernel-seccomp` broken-pipe
+fix, new `libc-abi`/shared provider CLI and `linux-abi-scan` pipe fixes, and packaged
+documentation. Recommend **0.3.2 for all five workspace crates**, subject to gates
 below. This is a patch under the current [versioning policy](RELEASING.md#versioning).
-Commit `7fbd303` implements the kernel fix after v0.3.1; fixes for `libc-abi` and
-`linux-abi-scan` are still open in [the roadmap](ROADMAP.md). Either explicitly
-exclude those two fixes from the candidate, or implement and validate them in a
-separately authorized task before including them. This planning task adds no code.
+See the [candidate record](RELEASE-CANDIDATE-0.3.2.md) for revised source identity
+and qualification; the initial candidate's evidence does not qualify new code.
 
 New presets, kernels, rules, API/CLI additions, or breaking changes require review
 for **0.4.0** under that policy. Do not disguise expanded simulation or provider
 coverage as documentation. No new glibc releases, regenerated packs, prebuilt
-provider mode, MSRV changes, or runtime qualification claims are in this candidate.
+provider mode, MSRV changes, or universal runtime compatibility claims are in this candidate.
 
 All five crates currently release in lockstep while 0.x. Selective releases could
 reduce unrelated publications, but are **not the existing policy**: they need an
@@ -147,8 +146,11 @@ For an authorized lockstep workspace release, publish in this valid order:
 4. `linux-abi-scan` (requires kernel-abi-tools and linux-targets).
 5. `libc-abi-tools` (requires the two upstream glibc crates; independent of steps 2–4).
 6. Umbrella `linux-abi-tools` (requires all four workspace crates).
-7. cargo-libc **only if** its own approved scope or published locked dependency
-   adoption calls for a release, after consumer qualification.
+7. After producer publication, cargo-libc must raise its `libc-abi-tools` minimum
+   to 0.3.2 if claiming the shared provider-output fix, refresh its real registry
+   lock, and validate unpatched integration and locked installation before its
+   own authorized release. Source-patched candidate checks are preliminary evidence,
+   not registry adoption.
 
 All internal version requirements and the workspace lock must agree with the
 chosen lockstep version in the future release change. The separate musl runtime

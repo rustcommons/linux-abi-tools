@@ -73,6 +73,7 @@ pub mod elf;
 pub mod glibc;
 pub mod libgcc;
 pub mod matrix;
+mod output;
 pub mod provider;
 mod sha256;
 pub mod stub;

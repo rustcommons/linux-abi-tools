@@ -5,7 +5,7 @@ use super::{
     cache::{self, Mode},
     prepare,
 };
-use crate::{glibc, version::Version};
+use crate::{glibc, output::emit, version::Version};
 use std::{ffi::OsString, path::PathBuf};
 
 /// Help text for the provider commands; PROGRAM is the command prefix.
@@ -179,19 +179,19 @@ pub fn run(args: &[OsString], program: &str) -> Result<(), String> {
                 for note in &prepared.notes {
                     eprintln!("  {note}");
                 }
-                println!("{}", entry.descriptor().display());
+                emit(&format!("{}\n", entry.descriptor().display()))?;
             }
         }
         "list" => {
-            println!("glibc\tmode\thash\tdescriptor");
+            emit("glibc\tmode\thash\tdescriptor\n")?;
             for entry in cache::list(&root)? {
-                println!(
-                    "{}\t{}\t{}\t{}",
+                emit(&format!(
+                    "{}\t{}\t{}\t{}\n",
                     entry.release,
                     entry.mode,
                     entry.hash,
                     entry.descriptor().display()
-                );
+                ))?;
             }
         }
         "path" => {
@@ -205,7 +205,7 @@ pub fn run(args: &[OsString], program: &str) -> Result<(), String> {
                 if let Some(hash) = prepare::current_hash(release, mode, &snapshot, &tools)? {
                     let entry = cache::entry(&root, release, mode, &hash);
                     if entry.dir.join("manifest.json").is_file() {
-                        println!("{}", entry.descriptor().display());
+                        emit(&format!("{}\n", entry.descriptor().display()))?;
                         return Ok(());
                     }
                 }
@@ -225,10 +225,10 @@ pub fn run(args: &[OsString], program: &str) -> Result<(), String> {
             for entry in entries {
                 cache::verify(&entry, &snapshot)
                     .map_err(|e| format!("{} provider {}: {e}", entry.mode, entry.hash))?;
-                println!(
-                    "glibc {release}: {} provider {} verified",
+                emit(&format!(
+                    "glibc {release}: {} provider {} verified\n",
                     entry.mode, entry.hash
-                );
+                ))?;
             }
         }
         "export" => {
@@ -239,21 +239,21 @@ pub fn run(args: &[OsString], program: &str) -> Result<(), String> {
                 return Err(format!("no cached provider for glibc {release}"));
             }
             for entry in entries {
-                println!("{}", cache::export(&entry, &to)?.display());
+                emit(&format!("{}\n", cache::export(&entry, &to)?.display()))?;
             }
         }
         "import" => {
             let from = positional.first().ok_or("import needs a directory")?;
             let startup = tools.gcc_startup()?;
             for entry in cache::import(std::path::Path::new(from), &root, &startup)? {
-                println!("{}", entry.descriptor().display());
+                emit(&format!("{}\n", entry.descriptor().display()))?;
             }
         }
         "remove" => {
             let release = if all { None } else { Some(glibc()?) };
             for entry in selected(release)? {
                 cache::remove_tree(&entry.dir)?;
-                println!("removed {}", entry.dir.display());
+                emit(&format!("removed {}\n", entry.dir.display()))?;
             }
         }
         _ => unreachable!(),
