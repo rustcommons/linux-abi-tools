@@ -107,13 +107,35 @@ intentionally retains both upstream lock resolutions at 0.1.0.
 - [x] Final no-default root tests, Clippy, warning-free docs and MSRV.
 - [x] Final all-five package verification, contents/license review and lock consistency.
 - [x] Focused hosted workflow on the revised exact SHA: Linux/Windows root and workspace tests, MSRV, local/container kernel profiles.
-- [ ] Fresh cargo-libc integration with revised source, including shared provider stdout and later-error regressions.
+- [x] Fresh cargo-libc integration with revised source, including shared provider stdout and later-error regressions (run 41243277747).
 - [ ] Maintainer scope/package review, registry/tag recheck and explicit publication authorization.
 
 Full provider rebuild/replay, Python consumer scenarios and real old-target
 qualification are excluded from this bounded output-handling patch. Provider
-input hashes/build logic did not change, but shared provider CLI behavior must
-be tested anew. No universal runtime or distribution certification is claimed.
+input hashes/build logic did not change; shared provider CLI behavior was
+qualified against the revised source in the combined run below. No universal runtime or distribution certification is claimed.
+
+## Combined consumer qualification
+
+[Integration run 41243277747](https://github.com/rustcommons/cargo-libc/actions/runs/41243277747)
+completed **successfully**, confirmed through the GitHub API, for exact revisions:
+
+- Producer: `53d3c6f0fa0fee5739e4021eb335017533396f06`.
+- Consumer: `b8ff22a5b1cbb71f123b58c4efdd9be7614bfce4`.
+
+The run passed shared-provider export regressions for closed stdout, a later
+independent failure, and genuine non-BrokenPipe output failures. It also passed
+native provider reuse/link/inspect/run/refusal checks, C/CMake integration, both
+plain-Cargo configuration formats, and sysroot/host-target isolation checks.
+This qualifies the revised source-patched combination for the stated scope;
+it does not establish universal runtime compatibility or real-registry adoption.
+The earlier consumer revision `5d5184c5d8521fba50191716d0f1e38724ba04f4` is not
+the final qualifying consumer revision.
+
+Real-registry cargo-libc dependency adoption and locked-install validation remain
+deferred until the producer packages exist, as specified in the publication order
+below. Those are downstream release gates, not an uncompleted source-integration
+check for this producer candidate.
 
 ## Historical evidence only
 
@@ -154,7 +176,7 @@ them to production manifests or claim nonexistent registry versions were adopted
 
 ## Decision
 
-**No-go for publication:** revised producer checks passed; fresh combined consumer
-integration is pending, followed by maintainer review, registry/tag recheck and
+**Revised producer and scoped combined consumer qualification passed.** Publication
+remains gated on maintainer scope/package review, a fresh registry/tag recheck and
 explicit publication authorization.
 No release, merge, tag, yank or downstream registry adoption occurs in this task.
