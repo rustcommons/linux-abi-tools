@@ -8,6 +8,10 @@ use linux_targets::{Request, Selection};
 use std::path::Path;
 use std::process::ExitCode;
 
+#[path = "linux-abi-scan/output.rs"]
+mod output;
+use output::emit;
+
 const USAGE: &str = "\
 usage: linux-abi-scan FILE... (--distro ID | [--glibc X.Y] [--kernel X.Y] [--target TRIPLE[.X.Y]])
                       [--strict] [--verbose] [--tsv]
@@ -49,7 +53,7 @@ fn run(args: &[String]) -> Result<u8, String> {
             "--verbose" | "-v" => verbose = true,
             "--tsv" => tsv = true,
             "-h" | "--help" => {
-                println!("{USAGE}");
+                emit(&format!("{USAGE}\n"))?;
                 return Ok(0);
             }
             s if s.starts_with('-') => return Err(format!("unknown option {s:?}\n{USAGE}")),
@@ -64,10 +68,10 @@ fn run(args: &[String]) -> Result<u8, String> {
     for f in files {
         let report = scan_file(Path::new(f), &target)?;
         if tsv {
-            print!("{}", report.to_tsv());
+            emit(&report.to_tsv())?;
         } else {
-            println!("== {f}");
-            print!("{}", report.to_text(verbose));
+            emit(&format!("== {f}\n"))?;
+            emit(&report.to_text(verbose))?;
         }
         code = code.max(report.exit_code(strict));
     }

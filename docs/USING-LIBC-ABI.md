@@ -98,7 +98,7 @@ glibc 2.17 is a **target release floor**, not a symbol-version filter.
 libc-abi glibc matrix --symbol fmemopen
 libc-abi glibc diff --from 2.17 --to 2.22
 libc-abi glibc changes
-libc-abi glibc expect --release 2.22 --library c --symbol memcpy --version GLIBC_2.14
+libc-abi glibc expect --release 2.22 --library c --symbol memcpy --version 2.14
 ```
 
 `expect` reports accept/reject/unknown membership; missing evidence is not a

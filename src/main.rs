@@ -1,11 +1,10 @@
 //! The `libc-abi` command: glibc ABI metadata, link-only stubs and providers from
 //! the [`libc_abi_tools`] library. Run `libc-abi --help` for its commands.
 use libc_abi_tools::{elf, glibc, libgcc, matrix::Matrix, stub, version::Version};
-use std::{
-    ffi::OsString,
-    io::{self, Write},
-    path::PathBuf,
-};
+use std::{ffi::OsString, path::PathBuf};
+
+mod output;
+use output::emit;
 
 const HELP: &str = "libc-abi - Rust libc ABI metadata tools (glibc first)
 
@@ -58,11 +57,14 @@ PROVIDER COMMANDS
 
 fn run(args: Vec<OsString>) -> Result<(), String> {
     if args.is_empty() || matches!(args[0].to_str(), Some("--help" | "-h" | "help")) {
-        print!("{HELP}{}", libc_abi_tools::provider::cli::help("libc-abi"));
+        emit(&format!(
+            "{HELP}{}",
+            libc_abi_tools::provider::cli::help("libc-abi")
+        ))?;
         return Ok(());
     }
     if args.len() == 1 && args[0] == "--version" {
-        println!("libc-abi {}", env!("CARGO_PKG_VERSION"));
+        emit(&format!("libc-abi {}\n", env!("CARGO_PKG_VERSION")))?;
         return Ok(());
     }
     if args[0] == "libgcc" {
@@ -91,7 +93,7 @@ fn run(args: Vec<OsString>) -> Result<(), String> {
     let mut i = 2;
     while i < args.len() {
         if args[i] == "--help" {
-            print!("{HELP}");
+            emit(HELP)?;
             return Ok(());
         }
         let flag = args[i].to_str().ok_or("option must be UTF-8")?;
@@ -148,20 +150,11 @@ fn run(args: Vec<OsString>) -> Result<(), String> {
                         .label()
                 ),
             };
-            if let Err(error) = io::stdout().lock().write_all(text.as_bytes()) {
-                if error.kind() != io::ErrorKind::BrokenPipe {
-                    return Err(error.to_string());
-                }
-            }
+            emit(&text)?;
         }
         "elf" => {
             let text = elf::Metadata::load(&PathBuf::from(required("--input")?))?.to_tsv();
-            match io::stdout().lock().write_all(text.as_bytes()) {
-                Err(error) if error.kind() != io::ErrorKind::BrokenPipe => {
-                    return Err(error.to_string())
-                }
-                _ => {}
-            }
+            emit(&text)?;
         }
         "libraries" => {
             let release: Version = required("--release")?
@@ -173,12 +166,7 @@ fn run(args: Vec<OsString>) -> Result<(), String> {
                 None => bundled_snapshot(release)?,
             };
             let text = stub::glibc_table(&snapshot, &PathBuf::from(required("--input")?))?;
-            match io::stdout().lock().write_all(text.as_bytes()) {
-                Err(error) if error.kind() != io::ErrorKind::BrokenPipe => {
-                    return Err(error.to_string())
-                }
-                _ => {}
-            }
+            emit(&text)?;
         }
         "snapshot" => {
             let release: Version = required("--release")?
@@ -194,19 +182,14 @@ fn run(args: Vec<OsString>) -> Result<(), String> {
                 None => bundled_snapshot(release)?,
             };
             let text = snapshot.to_tsv(symbol);
-            match io::stdout().lock().write_all(text.as_bytes()) {
-                Err(error) if error.kind() != io::ErrorKind::BrokenPipe => {
-                    return Err(error.to_string())
-                }
-                _ => {}
-            }
+            emit(&text)?;
         }
         "collect" => {
             let destination = glibc::collect(
                 &PathBuf::from(required("--source")?),
                 &PathBuf::from(required("--output")?),
             )?;
-            println!("Collected {}", destination.display());
+            emit(&format!("Collected {}\n", destination.display()))?;
         }
         "export-data" => export_data(&PathBuf::from(required("--output")?))?,
         _ => unreachable!(),
@@ -231,12 +214,12 @@ fn libgcc_command(args: &[OsString]) -> Result<(), String> {
     ] {
         std::fs::write(output.join(name), text).map_err(|e| e.to_string())?;
     }
-    println!(
-        "{}: {} definitions, the interface of GCC {}",
+    emit(&format!(
+        "{}: {} definitions, the interface of GCC {}\n",
         libgcc::SONAME,
         sources.selected.symbols.len(),
         libgcc::GCC_RELEASE
-    );
+    ))?;
     Ok(())
 }
 
@@ -253,7 +236,10 @@ fn bundled_snapshot(release: Version) -> Result<glibc::Snapshot, String> {
 #[cfg(feature = "bundled-glibc-data")]
 fn export_data(output: &std::path::Path) -> Result<(), String> {
     let count = glibc::export_bundled(output)?;
-    println!("Exported {count} glibc ABI lists to {}", output.display());
+    emit(&format!(
+        "Exported {count} glibc ABI lists to {}\n",
+        output.display()
+    ))?;
     Ok(())
 }
 
