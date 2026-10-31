@@ -1,7 +1,8 @@
 # Releasing
 
-See the [2026-10-31 release plan](RELEASE-PLAN.md) for the next candidate,
-dependency evidence, and gates. This is not release authorization.
+See the [0.3.2 qualification record](RELEASE-CANDIDATE-0.3.2.md) for published
+checksums, exact source revisions and documentation status. The
+[2026-10-31 plan](RELEASE-PLAN.md) retains the dependency analysis and release gates.
 
 The workspace publishes five crates to **crates.io only**, after
 [glibc-abilists](https://github.com/rustcommons/glibc-abilists), which holds the
@@ -42,6 +43,7 @@ then drop the `git`/`rev` keys and update `Cargo.lock`.
 | 0.3.0 | 2026-10-13 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `6c3dd725e8b7ed9d8265dba360b7db021c3afc54` (`v0.3.0`) |
 | 0.3.1 | 2026-10-13 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `3cd97929a99280fca2f616dae63bd610a038e131` (`v0.3.1`) |
 | 0.1.1 | 2026-10-14 | `glibc-abilists` | `d7e5228dae5b2591fc7849a9b82607a7d6bc25bb` (glibc-abilists `v0.1.1`) |
+| 0.3.2 | 2026-10-31 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `d404073e2329405e9e6f2dd1005fd8671e0d0f41` ([`v0.3.2`](https://github.com/rustcommons/linux-abi-tools/tree/v0.3.2)) |
 
 **0.2.0:** `libc-abi-tools` accepts provider descriptors for every glibc release in the
 pinned ABI lists, 2.17 through 2.44 (0.1.0 accepted 2.17, 2.18 and 2.22), exposes them as
@@ -62,6 +64,13 @@ The other crates are unchanged apart from the shared version.
 (`missing_docs` is warned and CI denies warnings), each crate overview has a runnable
 example kept as a doc test, and the manifests carry docs.rs metadata. No API or
 behaviour changes.
+
+**0.3.2:** all three CLI stdout broken-pipe fixes, including reusable provider
+command output, plus installation and guide cleanup. Broken output pipes do not
+hide scanner findings or later provider failures; genuine output errors still
+fail. Five-package lockstep release; upstream data/source inputs are unchanged.
+The [qualification record](RELEASE-CANDIDATE-0.3.2.md) links Linux/Windows/MSRV,
+package and scoped consumer checks and records published archive checksums.
 
 **glibc-abilists 0.1.1:** documentation only. Every public item is documented,
 including when `release()` and `abilist()` return `None`; the README example runs as

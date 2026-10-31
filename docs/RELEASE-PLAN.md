@@ -1,10 +1,15 @@
-# Next release plan
+# 0.3.2 release plan (historical)
 
 Date: **2026-10-31**. Proposal only; no version bump, package publication, tag,
 release, or new compatibility claim is authorized by this document.
 
-The [0.3.2 draft candidate](RELEASE-CANDIDATE-0.3.2.md) records the subsequently
-authorized preparation, exact scope, and validation status. It is not publication.
+The [0.3.2 qualification record](RELEASE-CANDIDATE-0.3.2.md) records the subsequently
+authorized preparation, final scope, successful checks and completed publication.
+
+Published 2026-10-31 as `v0.3.2` at `d404073e2329405e9e6f2dd1005fd8671e0d0f41`.
+The [release qualification record](RELEASE-CANDIDATE-0.3.2.md) supersedes the
+pre-publication status and version observations below. This document preserves
+the planning decisions; it does not authorize future releases.
 
 ## Decision and scope
 

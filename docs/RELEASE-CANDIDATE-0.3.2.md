@@ -1,11 +1,14 @@
-# 0.3.2 candidate — not published
+# 0.3.2 release qualification
 
-Updated 2026-10-31 on `release/0.3.2-candidate`, draft PR #1. Publication, merge,
-tags and yanks are not authorized. See [the release plan](RELEASE-PLAN.md) and
-[procedure](RELEASING.md). This record supersedes the narrower kernel-output-only
-candidate; old evidence is historical, not qualification of the revised source.
+Published **2026-10-31** after review and explicit authorization. [PR #1](https://github.com/rustcommons/linux-abi-tools/pull/1)
+was merged at `d404073e2329405e9e6f2dd1005fd8671e0d0f41`, tagged
+[`v0.3.2`](https://github.com/rustcommons/linux-abi-tools/tree/v0.3.2).
+Its package sources, manifests, lock and workflow are identical to tested producer
+`53d3c6f0fa0fee5739e4021eb335017533396f06`; intervening changes only updated this
+qualification record. All five package archives identify the clean merged commit.
+No GitHub binary bundles or release assets were created.
 
-## Proposed release notes and scope
+## Release notes and scope
 
 - All three workspace CLIs handle a closed stdout reader without a panic:
   `kernel-seccomp` (existing fix `7fbd303`), `libc-abi`, and `linux-abi-scan`.
@@ -59,8 +62,8 @@ counted as a pass. Final source checks use the fresh build directory.
 ## Revised qualification checklist
 
 Tested source: **`53d3c6f0fa0fee5739e4021eb335017533396f06`**.
-Evidence-only follow-ups modify this record, not the package sources, manifests,
-lockfile or workflow. Consumer integration must record and use that exact revised source.
+Pre-release evidence-only follow-ups modified this record, not the package sources,
+manifests, lockfile or workflow. Consumer integration used that exact revised source.
 
 Final local checks passed on ARM64 Linux with Rust 1.99.0, Rust 1.90.0 for MSRV,
 `CARGO_BUILD_JOBS=2`, `RUST_TEST_THREADS=2`, and a fresh `target/pipe-fixes` directory:
@@ -96,10 +99,10 @@ completed **successfully** on 2026-10-31 for exact
 - MSRV: whole-workspace all-target check with Rust 1.90.0.
 - x86_64 kernel simulation: 47 local profiles and 22 SLES 12 SP5 container profiles.
 
-Registry APIs rechecked on 2026-10-31: the five latest published workspace versions
-remain 0.3.1, unyanked; **0.3.2 is not published**. Upstream latest versions remain
-0.1.1 (glibc-abilists) and 0.1.0 (glibc-provider-sources), unyanked. The candidate
-intentionally retains both upstream lock resolutions at 0.1.0.
+Registry verification after publication on 2026-10-31 confirmed all five 0.3.2
+packages, unyanked, with matching API/index/download checksums and clean release
+commit metadata. Both upstream lock resolutions remain at 0.1.0; no upstream
+data/source package was released for this change.
 
 - [x] Before/after early-consumer reproduction and deterministic targeted regressions.
 - [x] Write/flush failure classification and buffered-flush tests.
@@ -108,7 +111,8 @@ intentionally retains both upstream lock resolutions at 0.1.0.
 - [x] Final all-five package verification, contents/license review and lock consistency.
 - [x] Focused hosted workflow on the revised exact SHA: Linux/Windows root and workspace tests, MSRV, local/container kernel profiles.
 - [x] Fresh cargo-libc integration with revised source, including shared provider stdout and later-error regressions (run 41243277747).
-- [ ] Maintainer scope/package review, registry/tag recheck and explicit publication authorization.
+- [x] Maintainer scope/package review, registry/tag recheck and explicit publication authorization.
+- [x] All five packages published and verified; v0.3.2 tags the exact released commit.
 
 Full provider rebuild/replay, Python consumer scenarios and real old-target
 qualification are excluded from this bounded output-handling patch. Provider
@@ -148,23 +152,36 @@ Those results covered the earlier kernel-only patch and **do not qualify the
 new libc-abi/provider/scanner code**. Evidence-only commits following a newly
 tested source must identify both source and documentation HEAD explicitly.
 
-## Future publication and downstream adoption order
+## Published packages and downstream adoption
 
-No publish command is to be executed in this preparation task. After explicit
-future approval, publish one package at a time in this order:
+Publication completed in this order, verifying availability before each dependent
+package: linux-targets → kernel-abi-tools → linux-abi-scan → libc-abi-tools →
+umbrella linux-abi-tools. The root libc package is independent of the first three
+after its existing upstream inputs. No extra upstream glibc release was needed.
 
-1. `linux-targets` 0.3.2.
-2. `kernel-abi-tools` 0.3.2.
-3. `linux-abi-scan` 0.3.2.
-4. `libc-abi-tools` 0.3.2 (independent of steps 1–3 after its existing upstream inputs).
-5. Umbrella `linux-abi-tools` 0.3.2.
+Official registry API, sparse-index entries and downloaded archives were checked
+independently. Every archive's `.cargo_vcs_info.json` identifies clean commit
+`d404073e2329405e9e6f2dd1005fd8671e0d0f41`.
 
-After **each** publication, verify the exact version and unyanked status through
-the crates.io API, registry index and fetched package manifest/checksum before
-starting the next dependent publication. A successful upload alone is not proof
-that downstream resolution can see it. Stop on discrepancies; do not overwrite
-versions or move tags. Reuse existing upstream glibc packages; there is no data
-change that calls for publishing them again.
+| Package | Version | SHA-256 of published archive |
+| --- | --- | --- |
+| [linux-targets](https://crates.io/api/v1/crates/linux-targets/0.3.2) | 0.3.2 | `a9e3ec31c779ff773874ca7541dbabc85868aa965af2c54f951516ea5699c104` |
+| [kernel-abi-tools](https://crates.io/api/v1/crates/kernel-abi-tools/0.3.2) | 0.3.2 | `a9da5a4b7dedfb152d6635d7de87efa22a92b1fd6f496ec351caa6d3bbdfd209` |
+| [linux-abi-scan](https://crates.io/api/v1/crates/linux-abi-scan/0.3.2) | 0.3.2 | `d2ea34b1aa4ff30bc553fd4a7061da0a3f40914d6e75394a2c1391c6d947bff4` |
+| [libc-abi-tools](https://crates.io/api/v1/crates/libc-abi-tools/0.3.2) | 0.3.2 | `079327b25d8d9089e4dc20dc09de4d3dcc0fb2762b55166854c7787bc33db9fc` |
+| [linux-abi-tools](https://crates.io/api/v1/crates/linux-abi-tools/0.3.2) | 0.3.2 | `532043a3b5b8e7012cc0b0bbcb1380910a725b6a145837edda7865dbf2ce2b4f` |
+
+## API documentation status
+
+Checked after publication on 2026-10-31 via each version's docs.rs status endpoint:
+
+- [linux-targets](https://docs.rs/crate/linux-targets/0.3.2/status.json): `doc_status: true`.
+- [kernel-abi-tools](https://docs.rs/crate/kernel-abi-tools/0.3.2/status.json): `doc_status: true`.
+- [linux-abi-scan](https://docs.rs/crate/linux-abi-scan/0.3.2/status.json): `doc_status: true`.
+- [libc-abi-tools](https://docs.rs/crate/libc-abi-tools/0.3.2/status.json): `doc_status: true`.
+- [linux-abi-tools](https://docs.rs/crate/linux-abi-tools/0.3.2/status.json): `doc_status: true` (confirmed on recheck after an initial HTTP 404).
+
+## Consumer adoption
 
 Only **after producer publication**, cargo-libc raises its `libc-abi-tools`
 minimum to **0.3.2** if its complete provider pipe behavior depends on this fix,
@@ -174,9 +191,10 @@ actual required behavior, not automatic lockstep with this workspace. Temporary
 source patches are only for isolated pre-publication integration: never commit
 them to production manifests or claim nonexistent registry versions were adopted.
 
-## Decision
+## Release status
 
-**Revised producer and scoped combined consumer qualification passed.** Publication
-remains gated on maintainer scope/package review, a fresh registry/tag recheck and
-explicit publication authorization.
-No release, merge, tag, yank or downstream registry adoption occurs in this task.
+Producer publication and tagging are complete. Revised producer and scoped
+source-patched consumer qualification passed. Real-registry cargo-libc adoption
+and locked-install verification are separate downstream release work; they are
+not claimed complete by this producer record. All five docs.rs status endpoints now report successful documentation builds,
+as recorded above.

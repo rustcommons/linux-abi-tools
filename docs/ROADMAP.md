@@ -1,6 +1,7 @@
 # Roadmap
 
-[Next release plan (2026-10-31)](RELEASE-PLAN.md) — proposed scope and gates; nothing is published by this plan.
+[0.3.2 release qualification](RELEASE-CANDIDATE-0.3.2.md) records the published release;
+[the dated plan](RELEASE-PLAN.md) preserves its scope and dependency analysis.
 
 Open work only. What exists and how it was tested is in
 [GLIBC-COVERAGE.md](GLIBC-COVERAGE.md), [VALIDATION.md](VALIDATION.md),
@@ -22,9 +23,9 @@ The kernel crate has its own [roadmap](../crates/kernel-abi-tools/docs/ROADMAP.m
 - [ ] **Decide** whether the libc side should consume `linux-targets` presets, for
   example to map a distribution to its provider.
 
-The [0.3.2 candidate](RELEASE-CANDIDATE-0.3.2.md) now includes stdout broken-pipe
-fixes for all three workspace CLIs, including shared provider CLI output.
-They are not published; release qualification and authorization remain gates.
+Version [0.3.2](RELEASE-CANDIDATE-0.3.2.md) ships stdout broken-pipe fixes for
+all three workspace CLIs, including shared provider CLI output. These fixes are
+complete; real old-target qualification and the unrelated work below remain open.
 
 ## Provider delivery
 
