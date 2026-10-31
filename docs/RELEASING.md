@@ -1,5 +1,8 @@
 # Releasing
 
+See the [2026-10-31 release plan](RELEASE-PLAN.md) for the next candidate,
+dependency evidence, and gates. This is not release authorization.
+
 The workspace publishes five crates to **crates.io only**, after
 [glibc-abilists](https://github.com/rustcommons/glibc-abilists), which holds the
 glibc ABI lists and is released from its own repository first. No standalone
@@ -16,7 +19,8 @@ without the maintainer's go-ahead.
 
 Each manifest has an `include` list, so only sources, compiled-in data,
 README, and license/notice files are packaged. `libc-abi-tools` leaves out
-`data/`, `docs/`, `examples/`, and `tests/`; its own crate is MIT. A default
+`data/`, `docs/`, and `tests/`, plus examples other than the explicitly included
+provider build scripts and input manifests; its own crate is MIT. A default
 build of it includes glibc-abilists' LGPL-2.1-or-later data; build with
 `default-features = false` to leave that out.
 
@@ -73,10 +77,10 @@ here waited a few minutes).
 1. Set the same `version` in the five manifests and in the internal
    dependency requirements (`version = "X.Y.Z"` next to each `path`). Run
    `cargo check --workspace` to update `Cargo.lock`.
-2. Run the full validation from [CLAUDE.md](../CLAUDE.md). Kernel changes also
+2. Run the full validation from [AGENTS.md](../AGENTS.md). Kernel changes also
    require `crates/kernel-abi-tools/scripts/self-test.sh` with both `local` and
    a container image.
-3. Dry run: `cargo package --workspace --locked`. Cargo packages all four
+3. Dry run: `cargo package --workspace --locked`. Cargo packages all five
    crates and builds each from its packaged sources against a temporary
    registry that holds the others. Inspect the file lists with
    `cargo package --list -p <crate>`.

@@ -1,5 +1,7 @@
 # Roadmap
 
+[Next release plan (2026-10-31)](RELEASE-PLAN.md) — proposed scope and gates; nothing is published by this plan.
+
 Open work only. What exists and how it was tested is in
 [GLIBC-COVERAGE.md](GLIBC-COVERAGE.md), [VALIDATION.md](VALIDATION.md),
 [PROVIDERS.md](PROVIDERS.md) and the [release record](RELEASING.md#release-record).

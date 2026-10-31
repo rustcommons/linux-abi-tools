@@ -31,13 +31,13 @@ described in the linked section; **planned** and **long-term** rows are designs.
 | Hosted qualification of every provider | CI | Implemented (84 jobs) | [9.5](#95-hosted-qualification) |
 | Release the crates | Maintainers | Implemented (0.1.0, 0.2.0, 0.3.0, 0.3.1) | [9.6](#96-release) |
 | Choose a target (glibc and kernel floors) | Users | Implemented | [1](#1-choose-a-target) |
-| Build against an older glibc with a provider | Users | Implemented (provider supplied by the user) | [2](#2-build-against-an-older-glibc) |
+| Build against an older glibc with a provider | Users | Implemented (automatic preparation or an explicit provider) | [2](#2-build-against-an-older-glibc) |
 | Type-check without linking (`cargo libc check`) | Users | Implemented | [6](#6-how-this-translates-into-cargo-libc) |
 | Inspect a built binary (tier 1) | Users | Implemented | [3](#3-inspect-a-built-binary-tier-1) |
 | Run or test under an older kernel (tier 2) | Users | Implemented | [4](#4-run-under-an-older-kernel) |
 | Check runners and inputs (`cargo libc doctor`) | Users | Implemented | [6](#6-how-this-translates-into-cargo-libc) |
 | Use the libraries directly | Developers | Implemented | [5](#5-use-the-libraries-directly) |
-| Obtain a provider automatically (`source`, `prebuilt`, `container`) | Users | Planned | [10.1](#101-provider-delivery) |
+| Obtain a provider automatically (`source`, `container`) | Users | Implemented; `prebuilt` remains planned | [Using providers](USING-PROVIDERS.md) |
 | Distribution-specific providers | Maintainers and users | Planned, later release | [10.2](#102-distribution-specific-providers) |
 | Build the builder toolchains from source | Maintainers and CI | Long-term | [10.3](#103-source-built-builder-toolchains) |
 | Qualify on a real target host (tier 3) | Users | Outside these tools; required for any compatibility claim | [Testing tiers](#testing-tiers) |
@@ -76,17 +76,13 @@ One selection drives both floors. The rules are implemented in
 **Status: implemented, experimental** (glibc 2.17 through 2.44 on x86_64; see
 [PROVIDER-CONTRACT.md](PROVIDER-CONTRACT.md)).
 
-1. Produce a provider: generated link-only stub libraries plus the real startup
-   objects, `libc_nonshared.a`, headers, and compiler runtime, described by a
-   `libc-abi-provider-v1` descriptor. Today this is the
-   [provider pipeline](#93-provider-pipeline); planned automatic delivery is in
-   [10.1](#101-provider-delivery).
-2. Build: `cargo libc build --target x86_64-unknown-linux-gnu.2.22 --provider
-   provider.txt --artifact ... -- --release`.
+cargo-libc prepares and caches a provider automatically. To prepare one directly,
+run `libc-abi provider prepare --glibc 2.28`. Source mode is the default;
+container mode is also available. See [Using glibc providers](USING-PROVIDERS.md)
+for prerequisites, cache management, and offline use. Prebuilt mode is not available.
 
-The stubs are used only for linking and never deployed. The provider is still
-supplied by the user; [PROVIDER-DELIVERY.md](PROVIDER-DELIVERY.md) designs how
-users will obtain one without that step.
+The stubs are used only for linking and never deployed. The
+[provider pipeline](#93-provider-pipeline) documents how maintainers qualify inputs.
 
 ## 3. Inspect a built binary (tier 1)
 
@@ -209,7 +205,7 @@ cargo-libc cannot pin a commit of this repository. Offline builds use
 | cargo-libc | Calls | Status |
 | --- | --- | --- |
 | `--distro`, `--glibc`, `--kernel`, `--target triple.X` on every command | `Selection::resolve`; print `Selection::describe` so "kernel not simulated" is visible | Implemented on `build`, `test`, `run`, and `inspect` (`inspect` names the glibc option `--max-glibc`); `doctor` takes `--glibc`/`--target` only |
-| `cargo libc build` | Provider for the glibc floor | Implemented (provider supplied by the user) |
+| `cargo libc build` | Provider for the glibc floor | Implemented (automatic preparation or an explicit provider) |
 | `cargo libc check` (F03) | Same selection and target configuration, no link | Implemented (cargo-libc 772548dbc95b515dfb224702fdbb85b62f48a751); checked with every glibc provider in CI |
 | `cargo libc inspect` | `linux_abi_scan::scan` on the bytes it already read, with `ScanTarget::from_selection`; `--strict` maps to `Report::exit_code(true)` | Implemented (cargo-libc 0a500d4db5339f4819990090e1533783e920a9d7); floors resolved with `Selection::resolve` |
 | `cargo libc build` (after linking) | With `--distro`/`--kernel`, the same scan on the selected `--artifact`; `--strict` | Implemented (cargo-libc 2936c476d960b1cc9c860bd9396bb7cd5411f83f) |
@@ -231,13 +227,9 @@ process and the build scripts never run under the filter.
 
 ### Release order
 
-1. Publish `glibc-abilists` (its own repository), then `linux-targets`,
-   `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, and `linux-abi-tools`. Each depends
-   only on crates published before it.
-   `cargo package --workspace` verifies the set together before anything is
-   uploaded.
-2. Point cargo-libc at the published versions, implement the rows above, and
-   qualify them in cargo-libc's CI.
+Follow [Releasing](RELEASING.md) and the [next release plan](RELEASE-PLAN.md).
+Both `glibc-abilists` and `glibc-provider-sources` must already be available in
+the required versions; unchanged upstream crates do not need another release.
 
 ## 7. glibc ABI data
 
@@ -404,7 +396,7 @@ version, the ABI lists and the reference check.
 
 glibc-abilists releases from its own repository first.
 
-## 10. Planned workflows
+## 10. Provider delivery and planned extensions
 
 ### 10.1 Provider delivery
 
@@ -440,8 +432,8 @@ automatically; `prebuilt` mode is still planned. The user runs
    [section 2](#2-build-against-an-older-glibc).
 
 `cargo libc provider prepare|list|path|verify|export|import|remove` (and
-`libc-abi provider ...`) expose the same steps. CI qualifies every release in every
-mode before publishing the data crates:
+`libc-abi provider ...`) expose the same steps. Qualification requirements for
+available modes and the planned prebuilt mode are:
 - stubs and headers byte-identical across modes;
 - `prebuilt` byte-identical to the qualified container build;
 - `source` objects equivalent in symbols, sections and relocations;

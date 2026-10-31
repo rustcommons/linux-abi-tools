@@ -2,6 +2,8 @@
 
 # linux-abi-tools
 
+[Next release plan (2026-10-31)](docs/RELEASE-PLAN.md) — proposed scope and gates; nothing is published by this plan.
+
 [![docs.rs](https://img.shields.io/docsrs/libc-abi-tools)](https://docs.rs/libc-abi-tools)
 
 ABI data and tools for targeting older Linux systems from Rust: which libc
