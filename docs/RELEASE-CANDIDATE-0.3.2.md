@@ -111,24 +111,47 @@ Later evidence-only commits use CI-skip markers. Full glibc provider/replay matr
 are not required for this candidate's unchanged inputs/build logic and were not
 used as a substitute for the focused kernel checks.
 
+### cargo-libc consumer integration
+
+[Consumer workflow run 41238413717](https://github.com/rustcommons/cargo-libc/actions/runs/41238413717)
+completed **successfully**, independently verified by the parent, against:
+
+- Producer: `d2f9abbfa56fc8352b4639f9dd35048e474bf79c` (this candidate's tested package sources).
+- Consumer: `27d2a672b783d774637d4ea51bad38f1612e6a23` (isolated cargo-libc integration revision).
+
+All integration steps passed: source resolution of the four consumed packages at
+0.3.2; portable tests; automatic provider preparation/reuse, inspection, run and
+refusal cases; C/CMake dependencies and C++ refusal; command workflows with both
+plain-Cargo configuration formats; existing sysroot and host/target isolation;
+and the check that production files remained unchanged. The umbrella is not a
+cargo-libc dependency; its packaging and local tests are covered separately above.
+The source patches do not imply any 0.3.2 package exists on crates.io.
+
+Container and Python consumer scenarios, the full provider matrix/replay, and real
+old-target qualification were intentionally excluded for this unchanged-provider,
+kernel-output patch. The focused kernel workflow separately exercised its SLES
+container profiles. Neither run certifies universal runtime compatibility.
+Root libc-abi-tools' Windows suite was not rerun; its unchanged implementation
+has local portable coverage, as described above. No additional automated gate is
+pending for this candidate's agreed scope; expanded scope would require a fresh
+assessment of those excluded checks.
+
 - [x] Local portable/root tests, lint/docs, MSRV and package verification.
 - [x] Native x86_64 local/container kernel simulation and selected-crate Windows checks.
 - [x] Version/internal-requirement/lock consistency and unchanged input review.
-- [ ] Parent's cargo-libc integration against exact `d2f9abb` producer revision.
-- [ ] Maintainer review of final scope, package contents and publication authorization.
+- [x] Parent-verified cargo-libc integration against the exact producer and consumer revisions above.
+- [ ] Maintainer review of final scope and package contents.
+- [ ] Explicit publication authorization and the pre-publication registry/tag recheck.
 
-For consumer tests, temporarily patch all five packages to this branch's exact
-commit (or checkout paths) in an isolated cargo-libc tree and resolve its lock.
-Its `"0.3.0"` requirements permit this patch version. Do not substitute registry
-0.3.1 or pretend 0.3.2 is published. Keep temporary patches out of release manifests.
-Record the exact consumer and producer revisions and resolution. A later update
-only to this validation record does not change package sources or dependencies;
-record both revisions if integration ran against the earlier candidate.
+Evidence-only follow-ups change this record, not package sources, manifests,
+locks or workflows. The tested producer revision remains the reference for both
+hosted runs. No tests are rerun solely for these evidence updates.
 
 ## Decision
 
-**Locally and kernel-CI validated; no-go for publication pending consumer
-qualification, maintainer review and explicit publication authorization.**
+**Local, kernel-CI and scoped consumer qualification passed. No-go for publication
+pending maintainer review, explicit publication authorization and the final
+registry/tag recheck.**
 The draft PR can be reviewed independently of release authorization. Actual
 publication would follow dependency order and immutable-version constraints in
 [Releasing](RELEASING.md); this candidate preparation publishes nothing.
