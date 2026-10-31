@@ -215,28 +215,15 @@ rebuilding/reinstalling, or publishing a corrective version. Reverting Git does
 not retract registry archives. Never move existing tags or force-push to simulate
 rollback. Publishing, yanking or retagging is not authorized by this plan.
 
-## Remaining documentation cleanup, in priority order
+## Documentation cleanup status
 
-1. Add separate published CLI installation and library dependency quickstarts
-   to the root README; preserve the five-crate map, scope, licenses and one example.
-   `cargo install libc-abi-tools --locked` installs `libc-abi`; the umbrella is a library.
-2. Keep the corrected provider status in WORKFLOWS synchronized with
-   USING-PROVIDERS. Delegate detailed cargo-libc CLI usage to its own guide;
-   reconcile the conflicting doctor option summaries instead of duplicating them.
-3. Fix the kernel README data-refresh command: `cargo test` does not build a
-   release generator. From that crate directory use
-   `cargo run -p kernel-abi-tools --release --locked --bin kernel-seccomp -- generate profiles`.
-4. Shorten the root's release-by-release narrative and command catalog by linking
-   the existing provider index and workflow guides. Add guide links for matrix,
-   diff, changes, expect, ELF evidence and stub generation; retain exact-release
-   semantics and the inspect/simulate/qualify distinction.
-5. Remove stale claims: unspecified additional provider versions as future work,
-   no glibc implementation included (default sources include startup/nonshared
-   code), linux-targets' future cargo-libc integration, and containers as the only
-   possible way to run old glibc. Qualify offline/data claims by features and mode.
-6. Add the scanner install command and library dependency examples; document
-   provider `--keep-work` restrictions. Do not force CLI installation on library users.
+The follow-up documentation cleanup implements the review recommendations:
+separate CLI/library quickstarts, a concise root README, linked user and maintainer
+guides, corrected provider/feature/scope claims, a build-before-regenerate kernel
+command, smaller crate examples, and provider keep-work restrictions. Cargo CLI
+syntax and doctor behavior are delegated to cargo-libc's maintained guide.
+No new capability, data regeneration or compatibility qualification is implied.
 
-These are follow-up recommendations, not changes included in this plan or a
-release-implying changelog. The directly relevant corrections here are instruction
-authority, package count/include wording, dependency order and provider availability.
+Future documentation maintenance should keep these guides aligned with source,
+check links from packaged README pages, and update this dated evidence only through
+an explicit new observation rather than silently treating it as current forever.

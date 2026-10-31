@@ -7,7 +7,10 @@ against a target's glibc and kernel floors. Part of the
 [linux-abi-tools](https://github.com/rustcommons/linux-abi-tools) workspace and
 called by [cargo-libc](https://github.com/rustcommons/cargo-libc).
 
+Requires Rust/Cargo 1.90+ to install. For the CLI:
+
 ```sh
+cargo install linux-abi-scan --locked
 linux-abi-scan target/release/app --distro sles-12-sp5
 linux-abi-scan target/release/app --glibc 2.17 --kernel 3.10 --strict
 linux-abi-scan target/release/app --distro rhel-7 --tsv      # for tools
@@ -66,3 +69,14 @@ syscall, `syscall(SYS_memfd_create)`, and `madvise(MADV_FREE)` scanned against
 RHEL 7 reports all three at their addresses.
 
 Licensed under the MIT License.
+
+## Library use
+
+```toml
+[dependencies]
+linux-abi-scan = "0.3"
+```
+
+Use `scan_file` and `ScanTarget::from_selection`; see
+[API examples](https://docs.rs/linux-abi-scan). For target selection and subsequent
+simulation, see [Workflows](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/WORKFLOWS.md).

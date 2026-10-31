@@ -6,7 +6,7 @@ Target selection shared by the rustcommons Linux toolchain. Std-only, no
 dependencies.
 
 - **`distros()` / `distro(id)`:** 28 distribution presets from
-  [`data/distros.tsv`](data/distros.tsv). Each has a glibc floor, a kernel floor
+  [`data/distros.tsv`](https://github.com/rustcommons/linux-abi-tools/blob/main/crates/linux-targets/data/distros.tsv). Each has a glibc floor, a kernel floor
   (mainline base of the GA kernel), a container image with the real userland,
   and room for vendor kernel backports. Every glibc value was read from its
   image on 2026-10-10.
@@ -25,5 +25,16 @@ dependencies.
 `glibc 2.17, kernel not simulated (host)`, so a passing test is never mistaken
 for an old-kernel qualification.
 
-Consumers: [`kernel-abi-tools`](../kernel-abi-tools/README.md) today; cargo-libc
-once it depends on this workspace.
+Consumers include kernel-abi-tools, linux-abi-scan and cargo-libc.
+
+## Get started
+
+This is a library, not a CLI package. Requires Rust/Cargo 1.90+.
+
+```toml
+[dependencies]
+linux-targets = "0.3"
+```
+
+Use `distro`, `distros`, and `Selection::resolve`; see the runnable
+[API examples](https://docs.rs/linux-targets) and [workflow guide](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/WORKFLOWS.md).

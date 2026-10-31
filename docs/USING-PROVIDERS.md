@@ -27,7 +27,7 @@ there.
 | `container` | Runs the pinned container build that CI qualifies: the release's signed source archive, built in a digest-pinned CentOS 7, Debian 9 or Debian 12 image. | podman or docker, network, GCC, binutils, curl | 5–30 minutes per release | Source mode refused your GCC, or you want the objects CI built byte for byte. |
 | `prebuilt` | CI-built objects, downloaded. | — | — | Not available: it waits on a legal review. |
 
-Every mode generates the same stubs, `libgcc_s` stub and headers. They differ only
+Both available modes generate the same stubs, `libgcc_s` stub and headers. They differ only
 in how the startup objects are made. CI qualifies both available modes for every
 release ([PROVIDERS.md](PROVIDERS.md#delivery-modes-per-release)). One mode never
 falls back to another: if `source` refuses, nothing is used until you choose
@@ -59,7 +59,9 @@ libc-abi provider remove --glibc 2.28                      # or --all
 provider with the same inputs, unless you pass `--force`. Container-mode options:
 - `--engine PATH` selects the container engine;
 - `--archives DIR` uses glibc source archives you already downloaded;
-- `--keep-work DIR` keeps the build tree, for inspection.
+- `--keep-work DIR` keeps the build tree for inspection. It requires
+  `--mode container`, one `--glibc` release (not `--all`), and a directory that
+  does not already exist.
 
 ## The cache
 
@@ -86,9 +88,10 @@ records each file's SHA-256, and `verify` checks them all. Delete an entry with
 
 **Source mode works offline.** The sources are compiled into the tool, so a
 machine with the tool, GCC and binutils needs nothing else. Install the tool:
-- with `cargo install` from a connected machine;
+- with `cargo install libc-abi-tools --locked` on a connected machine;
 - or offline, from source vendored with `cargo vendor`;
-- or by copying the binaries: cargo-libc's five executables must stay together.
+- or by copying a binary built for the destination host. For cargo-libc's helper
+  installation, follow its [user guide](https://github.com/rustcommons/cargo-libc/blob/main/docs/USER-GUIDE.md).
 
 **Container mode needs the network** to pull the image and download the source
 archive. On a machine that cannot reach them:

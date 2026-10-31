@@ -13,9 +13,20 @@ systems. It re-exports four crates from the
 | `linux_abi_tools::kernel` | [`kernel-abi-tools`](https://crates.io/crates/kernel-abi-tools) | Kernel syscall data and seccomp simulation, on the host or in a container |
 | `linux_abi_tools::scan` | [`linux-abi-scan`](https://crates.io/crates/linux-abi-scan) | Static inspection of built executables against the glibc and kernel floors |
 
+## Get started
+
+Requires Rust/Cargo 1.90+. This package is a library:
+
+```toml
+[dependencies]
+linux-abi-tools = "0.3"
+```
+
+See [API examples](https://docs.rs/linux-abi-tools) for using the re-exported modules.
+
 Depend on an individual crate when you need only one part. The command-line
 tools (`libc-abi`, `kernel-seccomp`, `syscall-probe`, `linux-abi-scan`) are installed from their
-own crates, e.g. `cargo install kernel-abi-tools`. The companion Cargo
+own crates, e.g. `cargo install kernel-abi-tools --locked`. The companion Cargo
 subcommand is [cargo-libc](https://github.com/rustcommons/cargo-libc).
 
 See [WORKFLOWS.md](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/WORKFLOWS.md)
@@ -26,3 +37,8 @@ This crate and the four it re-exports are MIT licensed. Through
 [glibc-abilists](https://crates.io/crates/glibc-abilists), the GNU C Library's
 own ABI lists under LGPL-2.1-or-later, with provenance from glibc's signed
 release tags.
+
+Default dependencies also include glibc-provider-sources (glibc startup/nonshared
+source inputs and Linux UAPI headers with their own licenses). This umbrella does
+not expose feature opt-outs; depend directly on libc-abi-tools for independent
+`bundled-glibc-data` and `provider-sources` feature selection.

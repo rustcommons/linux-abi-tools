@@ -116,7 +116,9 @@ All five crates share one version while they are 0.x.
 
 ## Offline and disconnected networks
 
-Data is compiled into the crates, so nothing is fetched at run time.
+Default builds embed ABI, syscall and preset data. Source-mode provider preparation
+uses embedded inputs; container mode and container runners can need network access.
+With bundled ABI data disabled, supply an external data directory.
 
 - **Build from crates.io offline:** run `cargo vendor` on a connected machine
   for the consuming project (for example cargo-libc). Carry `vendor/` and the
