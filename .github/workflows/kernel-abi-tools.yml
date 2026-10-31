@@ -2,6 +2,7 @@ name: kernel-abi-tools
 # CI for crates/kernel-abi-tools and crates/linux-targets. The glibc
 # workflows cover the root libc-abi-tools package.
 on:
+  workflow_dispatch:
   push:
     paths:
       - crates/**
