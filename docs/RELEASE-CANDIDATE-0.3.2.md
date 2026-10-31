@@ -25,8 +25,10 @@ legal decisions, MSRV changes and real old-system qualification.
 The only Rust source/test differences are the kernel output fix and
 `crates/kernel-abi-tools/tests/broken_pipe.rs`. Other intervening commits record
 prior releases, simplify roadmaps, document existing CI, consolidate instructions,
-and improve documentation. The candidate adds only version/internal-requirement
-updates, the corresponding lock changes, and this record.
+and improve documentation. A separately authorized CI change adds only
+`workflow_dispatch` to the existing kernel workflow; all triggers and jobs are
+preserved. The candidate preparation adds version/internal-requirement updates,
+the corresponding lock changes, and this record.
 
 Package and lock changes:
 
@@ -46,25 +48,74 @@ The [release plan's registry links](RELEASE-PLAN.md#evidence-snapshot) provide e
 
 ## Validation and integration checklist
 
-Checks are initially pending and will be updated with actual results. Local host:
-Linux ARM64; two Cargo jobs and two test threads. Installed Rust 1.99.0 (CI version)
-and 1.90.0 (declared MSRV), with only existing locked dependencies fetched.
+Tested producer revision: **`d2f9abbfa56fc8352b4639f9dd35048e474bf79c`**.
+The earlier version-bump commit is `711189a5be54dd9745c4275cac7f722fbd796f90`;
+the tested revision also merges the manual-dispatch change from main (`5d79625`).
+Subsequent edits to this record are evidence-only: package sources, manifests,
+lockfile, features and workflows remain identical to the tested revision.
 
-- [ ] Rust formatting, workspace all-target tests and doctests, warning-free Clippy.
-- [ ] Root no-default-features tests and Clippy.
-- [ ] Workspace docs with warnings denied.
-- [ ] Rust 1.90 workspace all-target MSRV check.
-- [ ] All five package file lists and archive/verification checks.
-- [ ] Profile regeneration equals committed reference data.
-- [ ] Native x86_64 local/container simulation and Windows checks.
-- [ ] Parent's cargo-libc integration against the exact candidate revision.
+Local checks completed on Linux ARM64 with Rust 1.99.0, two Cargo jobs and two
+test threads. Rust 1.90.0 was used separately for the declared MSRV. Only existing
+locked dependencies were fetched; no new project dependency was added.
 
-CI skip markers avoid automatically starting the existing unrestricted provider
-workflows for unchanged provider inputs. No provider replay or all-release rebuild
-is requested for this patch. The existing kernel workflow describes x86_64
-simulation and Windows/MSRV gates, but it is not workflow-dispatch enabled.
-Any skipped hosted checks remain pending, not passing. This record does not change
-workflow definitions or repository policy.
+| Check | Result |
+| --- | --- |
+| `cargo +1.99.0 fmt --all -- --check` | Passed |
+| `cargo +1.99.0 test --workspace --all-targets --locked --offline` | Passed: 84 tests |
+| `cargo +1.99.0 test --workspace --doc --locked --offline` | Passed: 6 doctests |
+| `cargo +1.99.0 clippy --workspace --all-targets --locked --offline -- -D warnings` | Passed |
+| `cargo +1.99.0 test -p libc-abi-tools --all-targets --locked --offline --no-default-features` | Passed: 33 tests |
+| `cargo +1.99.0 clippy -p libc-abi-tools --all-targets --locked --offline --no-default-features -- -D warnings` | Passed |
+| `RUSTDOCFLAGS="-D warnings" cargo +1.99.0 doc --workspace --no-deps --all-features --locked --offline` | Passed |
+| `cargo +1.90.0 check --workspace --all-targets --locked --offline` | Passed for all five packages |
+| `cargo +1.99.0 package --workspace --locked` | Passed: all five packaged and verified from archives |
+| `cargo +1.99.0 package --list --locked -p <crate>` for each package | Passed; file lists and archive contents reviewed |
+| `kernel-seccomp generate` into a temporary directory, compared with committed profiles | Passed: identical profiles |
+| Markdown targets/anchors, command/source review, `git diff --check` | Passed |
+
+Workspace packaging used Cargo 1.99's temporary registry for internal 0.3.2
+packages. There was **no unpublished-dependency ordering failure**, no publication,
+and no replacement of internal dependencies with registry 0.3.1. Normalized
+archive manifests and locks select the candidate's internal versions. All five
+archives have their README and license, retain expected notices/embedded data,
+and exclude validation output and repository instructions. The root archive
+retains the libgcc table, Zig notice/license and provider build scripts/input
+manifests; guides stay on GitHub and README links are absolute repository URLs.
+Reviewed archive file counts: linux-targets 8, kernel-abi-tools 15,
+linux-abi-scan 10, libc-abi-tools 81, umbrella linux-abi-tools 7.
+
+### Hosted x86_64 and Windows evidence
+
+[Kernel workflow run 41238220271](https://github.com/rustcommons/linux-abi-tools/actions/runs/41238220271)
+completed **successfully** for exact SHA
+`d2f9abbfa56fc8352b4639f9dd35048e474bf79c` on 2026-10-31.
+It was manually dispatched on `release/0.3.2-candidate` after the dispatch trigger
+was added to main, preserving existing triggers and jobs.
+
+- `kernel-simulation`: passed shell checks, static probe/generator builds,
+  **47 local profiles** and **22 profiles in SLES 12 SP5 userland** with static crun.
+- `rust (windows-latest)`: passed formatting, selected-crate all-target tests,
+  Clippy and committed-profile comparison, including the broken-pipe regression.
+- `rust (ubuntu-latest)`: passed the same checks on x86_64 Linux.
+- `msrv`: passed selected-crate all-target checks on Rust 1.90.0.
+
+The selected crates are kernel-abi-tools, linux-targets, linux-abi-scan and the
+umbrella; this workflow does not run root libc-abi-tools' own test suite on Windows.
+The root suite passed locally on ARM64; its implementation and upstream inputs
+are unchanged from v0.3.1. No new root-platform qualification is claimed.
+
+An unmarked merge commit inadvertently queued automatic push/PR workflows;
+those six runs were cancelled (one needed force-cancellation). They are not
+passing evidence. The focused dispatch above is the retained hosted evidence.
+Later evidence-only commits use CI-skip markers. Full glibc provider/replay matrices
+are not required for this candidate's unchanged inputs/build logic and were not
+used as a substitute for the focused kernel checks.
+
+- [x] Local portable/root tests, lint/docs, MSRV and package verification.
+- [x] Native x86_64 local/container kernel simulation and selected-crate Windows checks.
+- [x] Version/internal-requirement/lock consistency and unchanged input review.
+- [ ] Parent's cargo-libc integration against exact `d2f9abb` producer revision.
+- [ ] Maintainer review of final scope, package contents and publication authorization.
 
 For consumer tests, temporarily patch all five packages to this branch's exact
 commit (or checkout paths) in an isolated cargo-libc tree and resolve its lock.
@@ -76,7 +127,8 @@ record both revisions if integration ran against the earlier candidate.
 
 ## Decision
 
-**No-go for publication while required checks or consumer qualification are pending.**
+**Locally and kernel-CI validated; no-go for publication pending consumer
+qualification, maintainer review and explicit publication authorization.**
 The draft PR can be reviewed independently of release authorization. Actual
 publication would follow dependency order and immutable-version constraints in
 [Releasing](RELEASING.md); this candidate preparation publishes nothing.
