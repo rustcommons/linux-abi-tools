@@ -60,7 +60,7 @@ counted as a pass. Final source checks use the fresh build directory.
 
 Tested source: **`53d3c6f0fa0fee5739e4021eb335017533396f06`**.
 Evidence-only follow-ups modify this record, not the package sources, manifests,
-lockfile or workflow. Parent integration must use that exact revised source.
+lockfile or workflow. Consumer integration must record and use that exact revised source.
 
 Final local checks passed on ARM64 Linux with Rust 1.99.0, Rust 1.90.0 for MSRV,
 `CARGO_BUILD_JOBS=2`, `RUST_TEST_THREADS=2`, and a fresh `target/pipe-fixes` directory:
@@ -107,7 +107,7 @@ intentionally retains both upstream lock resolutions at 0.1.0.
 - [x] Final no-default root tests, Clippy, warning-free docs and MSRV.
 - [x] Final all-five package verification, contents/license review and lock consistency.
 - [x] Focused hosted workflow on the revised exact SHA: Linux/Windows root and workspace tests, MSRV, local/container kernel profiles.
-- [ ] Fresh parent-coordinated cargo-libc integration with revised source, including shared provider stdout and later-error regressions.
+- [ ] Fresh cargo-libc integration with revised source, including shared provider stdout and later-error regressions.
 - [ ] Maintainer scope/package review, registry/tag recheck and explicit publication authorization.
 
 Full provider rebuild/replay, Python consumer scenarios and real old-target
