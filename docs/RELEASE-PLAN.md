@@ -3,6 +3,9 @@
 Date: **2026-10-31**. Proposal only; no version bump, package publication, tag,
 release, or new compatibility claim is authorized by this document.
 
+The [0.3.2 draft candidate](RELEASE-CANDIDATE-0.3.2.md) records the subsequently
+authorized preparation, exact scope, and validation status. It is not publication.
+
 ## Decision and scope
 
 For GitHub-only instruction, guide, roadmap, and repository metadata cleanup,
