@@ -58,15 +58,55 @@ counted as a pass. Final source checks use the fresh build directory.
 
 ## Revised qualification checklist
 
-Revised source SHA and run evidence will be recorded after pushing and checking
-this implementation. No prior green run is being carried forward as current.
+Tested source: **`53d3c6f0fa0fee5739e4021eb335017533396f06`**.
+Evidence-only follow-ups modify this record, not the package sources, manifests,
+lockfile or workflow. Parent integration must use that exact revised source.
+
+Final local checks passed on ARM64 Linux with Rust 1.99.0, Rust 1.90.0 for MSRV,
+`CARGO_BUILD_JOBS=2`, `RUST_TEST_THREADS=2`, and a fresh `target/pipe-fixes` directory:
+
+| Check | Result |
+| --- | --- |
+| `cargo fmt --all -- --check` | Passed |
+| `cargo test --workspace --all-targets --locked --offline` | Passed: 100 tests |
+| `cargo test --workspace --doc --locked --offline` | Passed: 6 doctests |
+| `cargo test -p libc-abi-tools --all-targets --locked --offline --no-default-features` | Passed: 43 tests |
+| `cargo clippy --workspace --all-targets --locked --offline -- -D warnings` | Passed |
+| `cargo clippy -p libc-abi-tools --all-targets --locked --offline --no-default-features -- -D warnings` | Passed |
+| `RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --all-features --locked --offline` | Passed |
+| `cargo +1.90.0 check --workspace --all-targets --locked --offline` | Passed |
+| `cargo package --workspace --locked` | All five archives packaged and verified |
+| Archive contents, normalized manifests/locks, notices/licenses and unchanged upstream inputs | Passed |
+| Markdown links/anchors and diff checks | Passed |
+
+Cargo 1.99 verified the unpublished internal 0.3.2 packages using its temporary
+registry. No registry-ordering failure or publication workaround occurred. Archive
+file counts are linux-targets 8, kernel-abi-tools 15, linux-abi-scan 11,
+libc-abi-tools 82, umbrella linux-abi-tools 7. The new private stdout helpers are
+included; validation outputs/instructions are excluded. Root libgcc input tables,
+provider scripts/manifests and required notices remain present. Upstream registry
+checksums, data, features and license declarations are unchanged.
+
+[Focused hosted run 41243021989](https://github.com/rustcommons/linux-abi-tools/actions/runs/41243021989)
+completed **successfully** on 2026-10-31 for exact
+`53d3c6f0fa0fee5739e4021eb335017533396f06`:
+
+- Windows and Ubuntu: whole-workspace all-target tests/Clippy, root CLI regressions,
+  doctests, no-default root tests and unchanged generated-profile comparison.
+- MSRV: whole-workspace all-target check with Rust 1.90.0.
+- x86_64 kernel simulation: 47 local profiles and 22 SLES 12 SP5 container profiles.
+
+Registry APIs rechecked on 2026-10-31: the five latest published workspace versions
+remain 0.3.1, unyanked; **0.3.2 is not published**. Upstream latest versions remain
+0.1.1 (glibc-abilists) and 0.1.0 (glibc-provider-sources), unyanked. The candidate
+intentionally retains both upstream lock resolutions at 0.1.0.
 
 - [x] Before/after early-consumer reproduction and deterministic targeted regressions.
 - [x] Write/flush failure classification and buffered-flush tests.
-- [ ] Final formatting, workspace all-target tests and doctests.
-- [ ] Final no-default root tests, Clippy, warning-free docs and MSRV.
-- [ ] Final all-five package verification, contents/license review and lock consistency.
-- [ ] Focused hosted workflow on the revised exact SHA: Linux/Windows root and workspace tests, MSRV, local/container kernel profiles.
+- [x] Final formatting, workspace all-target tests and doctests.
+- [x] Final no-default root tests, Clippy, warning-free docs and MSRV.
+- [x] Final all-five package verification, contents/license review and lock consistency.
+- [x] Focused hosted workflow on the revised exact SHA: Linux/Windows root and workspace tests, MSRV, local/container kernel profiles.
 - [ ] Fresh parent-coordinated cargo-libc integration with revised source, including shared provider stdout and later-error regressions.
 - [ ] Maintainer scope/package review, registry/tag recheck and explicit publication authorization.
 
@@ -114,6 +154,7 @@ them to production manifests or claim nonexistent registry versions were adopted
 
 ## Decision
 
-**No-go for publication:** revised final checks and fresh consumer integration
-are pending, followed by maintainer review and explicit publication authorization.
+**No-go for publication:** revised producer checks passed; fresh combined consumer
+integration is pending, followed by maintainer review, registry/tag recheck and
+explicit publication authorization.
 No release, merge, tag, yank or downstream registry adoption occurs in this task.
