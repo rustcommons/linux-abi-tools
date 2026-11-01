@@ -65,10 +65,17 @@ fixtures also returned CLI status 2 without panic under a 128 MiB/10 CPU-second
 limit and 15-second timeout (about 2 ms each; peak child RSS below 10 MiB).
 Fixtures were generated temporarily, not committed.
 
-This environment is ARM64 without a Docker/Podman daemon. Native x86_64 container
-qualification and fresh combined cargo-libc integration remain pending; the
-focused hosted workflow is required before declaring those paths qualified.
-No provider rebuild or package release is needed for this source review.
+The local environment is ARM64 without a Docker/Podman daemon. Native hosted
+qualification passed in [focused run 41263960927](https://github.com/rustcommons/linux-abi-tools/actions/runs/41263960927)
+on exact source `c04269a6ea864b3a6371e8813d14f0fa069eb006`: Windows and Ubuntu
+workspace checks, MSRV, 47 local kernel profiles, 22 SLES container profiles,
+and the new Docker/Podman stdin/environment/exit-status smoke test. Both engines
+reported success. This is native x86_64 coverage on a modern kernel, not tier 3
+or i386/x32 qualification.
+
+Independent re-review and fresh combined cargo-libc integration remain pending.
+Any later evidence-only documentation commit does not replace this tested source
+identity. No provider rebuild or package release is needed for this source review.
 
 ## Separate dispositions and limits
 
