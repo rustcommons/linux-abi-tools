@@ -162,19 +162,107 @@ identity. No provider rebuild or package release is needed for this source revie
 Real old-system qualification remains deferred; containers on a modern kernel
 are not tier 3 evidence.
 
-## Future publication and adoption
+## Planned next release and registry adoption
 
-Published 0.3.2 is immutable. A future version/release needs separate review and
-publication authorization, with the existing selective-versus-lockstep policy
-in [RELEASING.md](RELEASING.md). Under lockstep, publish and verify registry/index
-availability in order: `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`,
-`libc-abi-tools`, then `linux-abi-tools`. Unchanged glibc inputs need no new
-upstream release. No dependency floor or version bump is included here.
+**Recommendation, not an enacted release:** publish the five workspace crates
+as **0.3.3**, then adopt them in a **cargo-libc 0.2.2** patch release. These are
+compatible bug-fix proposals under the maintained policies, conditional on final
+independent review of the parser resource limits and preserved contracts. If
+review identifies an intentional breaking contract change, reconsider the version
+before preparing a release. No MSRV/native-tool floor increase is proposed.
 
-Before publication, integration must use the exact candidate revision through
-isolated patches. After publication, cargo-libc can adopt real registry versions,
-raise dependency minima needed for the fixes, refresh its registry lock, and
-validate an unpatched locked install. A dependency patch minimum is not itself
-a compiler/native-tool minimum change; cargo-libc's own maintained
-[release policy](https://github.com/rustcommons/cargo-libc/blob/main/docs/RELEASING.md)
-governs its version decision.
+**Published 0.3.2 lacks F1/F3 parser fixes and F4/F5 container fixes.** It is
+immutable. Merging this source PR would change Git only: it neither updates
+registry consumers nor authorizes publication. Keep source merge, a later
+version/lock/package preparation change, and publication as separate steps.
+No version, dependency or lock edits are part of this plan-only change.
+
+On 2026-11-01, the crates.io API reported 0.3.2 as latest for all five producers
+and 0.2.1 for cargo-libc; all proposed versions were unused. Recheck registry
+versions, yanked status and tags immediately before any authorized release.
+
+### Producer scope and order
+
+[Workspace versioning](RELEASING.md#versioning) requires all five crates to share
+one version while 0.x; it does not currently provide a selective-release
+exception. Therefore publish all five at 0.3.3 even though only two contain the
+runtime fixes. The later release preparation must set all five package versions
+and all internal path dependency requirements to 0.3.3, and deliberately refresh
+the workspace lock without unrelated dependency updates.
+
+| Order | Planned package | Reason |
+| --- | --- | --- |
+| 1 | [linux-targets 0.3.3](https://crates.io/api/v1/crates/linux-targets) | Unchanged implementation; lockstep prerequisite for kernel and scanner |
+| 2 | [kernel-abi-tools 0.3.3](https://crates.io/api/v1/crates/kernel-abi-tools) | F4/F5 environment/stdin fixes; requires linux-targets |
+| 3 | [linux-abi-scan 0.3.3](https://crates.io/api/v1/crates/linux-abi-scan) | F1/F3 parser hardening and R1/R2 corrections; requires kernel-abi-tools and linux-targets |
+| 4 | [libc-abi-tools 0.3.3](https://crates.io/api/v1/crates/libc-abi-tools) | Unchanged implementation; lockstep release, independent of steps 1–3 once existing glibc inputs are available |
+| 5 | [linux-abi-tools 0.3.3](https://crates.io/api/v1/crates/linux-abi-tools) | Umbrella requires all four at the new minimum |
+
+After each authorized publication, verify the registry/index version, non-yanked
+status, downloaded archive checksum and clean source identity before proceeding
+to the next package. Existing glibc data/source inputs are unchanged and already
+published; no new glibc-abilists or glibc-provider release is needed.
+
+Before publication, validate the final release tree: required tests, MSRV,
+fmt/clippy/docs, package contents/builds, licenses/provenance, and applicable
+native container/consumer integration. Account for version-dependent cache and
+package behavior; source-candidate results do not alone validate new package
+metadata. A package check blocked by unpublished internal requirements must be
+recorded as such, not bypassed by publishing without authorization. Preserve
+existing provider/data/pack/replay gates; unchanged inputs do not require an
+unrelated full-provider rebuild. Verify final published archives and docs.rs,
+and tag only the exact released commit under the normal release procedure.
+
+### cargo-libc minima and adoption
+
+Live cargo-libc main at
+[`92bc2b7`](https://github.com/rustcommons/cargo-libc/blob/92bc2b7874a5ee23975bd04e2ea29eb306b53f00/Cargo.toml)
+uses the requirements below; its registry lock resolves all four to 0.3.2.
+After producer publication, propose these direct requirements:
+
+| Dependency | Current requirement | Planned requirement | Required guarantee |
+| --- | --- | --- | --- |
+| `linux-abi-scan` | `"0.3.0"` | `"0.3.3"` | Exclude published versions lacking F1/F3 and the reviewed R1/R2 corrections |
+| `kernel-abi-tools` | `"0.3.0"` | `"0.3.3"` | Exclude published versions lacking F4/F5 for direct container-runner calls |
+| `libc-abi-tools` | `"0.3.2"` | Retain `"0.3.2"` | Preserve the existing shared-provider broken-pipe minimum; this patch adds no fix there |
+| `linux-targets` | `"0.3.0"` | Retain `"0.3.0"` | No new target-data behavior is required; new producer transitive requirements still apply |
+
+A Cargo requirement `"0.3.3"` means `>=0.3.3, <0.4.0`. Raising both scanner and
+kernel direct minima prevents *any permitted resolution* from selecting their
+known unfixed 0.3.2-or-earlier versions. Updating only Cargo.lock, relying on
+latest-version selection, or raising only the shared-provider requirement does
+not establish that guarantee. Do not raise unchanged direct minima merely for
+cosmetic alignment; record the actual resolved graph, including transitive
+linux-targets and any duplicate versions.
+
+Once all required producer versions are verified in the registry:
+
+1. Raise those two minima and deliberately refresh cargo-libc's **real registry**
+   lock; preserve unrelated dependencies/checksums. Verify the resolved sources
+   are crates.io, the fixed scanner/kernel versions are selected, and no path,
+   git, patch or temporary source replacement remains.
+2. Run applicable consumer tests on that graph: bounded malformed ELF errors,
+   real large-ELF acceptance, alias-site behavior, Docker/Podman environment and
+   redirected stdin, existing pipe/provider failures, and native workflow checks.
+   Candidate integration against an exact source SHA is prerelease evidence;
+   rerun the applicable registry qualification after adoption.
+3. Prepare cargo-libc 0.2.2 under its own
+   [release policy](https://github.com/rustcommons/cargo-libc/blob/main/docs/RELEASING.md),
+   inspect the packaged normalized manifest and lock, and install the unpacked
+   proposed package with `cargo install --path <unpacked-package> --locked` in
+   an isolated root and clean Cargo home. Exercise all five installed helpers
+   and affected workflows without temporary patches. A dependency patch-minimum
+   increase is not an MSRV/native-tool floor increase and does not by itself
+   require a minor version.
+4. Only after review and explicit publication authorization, release cargo-libc.
+   Verify its official archive, manifest/lock, source identity, non-yanked status
+   and docs.rs. Then run `cargo install cargo-libc --version 0.2.2 --locked` in a
+   clean Cargo home and isolated install root, and repeat installed smoke checks.
+   An existing installation is not updated by editing Git or a different lock.
+
+Real old-system tier 3 infrastructure remains unavailable and deferred, not an
+ordinary-release blocker. Ship only with passing applicable automated gates and
+an explicit coverage gap; do not add real-old-system compatibility claims without
+actual evidence. External consumers are unknown, not absent. No published
+archive or tag is replaced; failures require a reviewed corrective release,
+with any yank separately authorized.
