@@ -61,9 +61,25 @@ Synthetic tests accept 150,000 relocations and 70,000 symbols, retain the
 version-chain cap, preserve distinct virtual-address findings, coalesce exact
 aliases and reject excessive alias-derived sites without a partial report.
 
-Final local/hosted checks, independent re-review and combined cargo-libc
-integration must use the revised source. All evidence below for `c04269a` is
-historical and does not qualify this revision.
+Revised source: `6604ceea74152a2e8bb1b56e5605bd4feecd8365`.
+Local final checks passed with two build/test workers: fmt, 113 workspace tests,
+6 doctests, 43 no-default tests, Rust 1.90 all-target check, clippy with denied
+warnings and docs with denied rustdoc warnings. The real-toolchain acceptance
+test also passed separately; it is opt-in because it needs external ELF files.
+The original malformed note/string/version fixtures still returned status 2
+under the 128 MiB/10 CPU-second/15-second timeout bounds. The scaled alias-site
+regression also passed under those limits.
+
+[Focused run 41264765540](https://github.com/rustcommons/linux-abi-tools/actions/runs/41264765540)
+passed on that exact revision: Windows/Ubuntu workspace checks, MSRV, local and
+container kernel profiles, Docker/Podman I/O integration, and the official Rust
+1.90 Cargo/compiler-file acceptance test. Hosted acceptance produced the same
+659 and 473 findings as the local scans.
+
+Independent re-review and fresh combined cargo-libc integration remain pending
+for the revised source. All evidence below for `c04269a` is historical and does
+not qualify this revision. Later evidence-only documentation changes do not
+replace the tested source identity.
 
 ## Historical initial validation (`c04269a`)
 
