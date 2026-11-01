@@ -32,6 +32,9 @@ repositories. A dependency that is still a git revision (with a `version` too, a
 cannot verify `libc-abi-tools` until that version is on crates.io. Publish it first,
 then drop the `git`/`rev` keys and update `Cargo.lock`.
 
+The authorized [0.3.3 preparation](REVIEW-FIXES.md#authorized-033-release-preparation-2026-11-01)
+is tracked separately from publication.
+
 ## Release record
 
 | Version | Date | Crates | Commit (tag) |

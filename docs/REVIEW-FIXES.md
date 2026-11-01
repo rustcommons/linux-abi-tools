@@ -1,8 +1,9 @@
 # Unreleased parser and container I/O fixes
 
 Scope reviewed 2026-11-01 against published 0.3.2 (`d404073e2329405e9e6f2dd1005fd8671e0d0f41`).
-This work does not change versions, dependency requirements, upstream data, profiles
-or provider build inputs. It is not a release announcement.
+The reviewed source fixes did not change versions or dependency requirements.
+The authorized 0.3.3 preparation below updates package metadata only; upstream
+data, profiles and provider build inputs remain unchanged. Nothing is published yet.
 
 ## Implemented scope
 
@@ -76,10 +77,13 @@ container kernel profiles, Docker/Podman I/O integration, and the official Rust
 1.90 Cargo/compiler-file acceptance test. Hosted acceptance produced the same
 659 and 473 findings as the local scans.
 
-Independent re-review and fresh combined cargo-libc integration remain pending
-for the revised source. All evidence below for `c04269a` is historical and does
-not qualify this revision. Later evidence-only documentation changes do not
-replace the tested source identity.
+Independent re-review approved the revised source, merged in PR #2 at
+`c24ed06a9ac4e7014f9384b0692f22c098e21b99`.
+[Combined run 41265226302](https://github.com/rustcommons/cargo-libc/actions/runs/41265226302)
+passed with consumer `192e0157063f6b2c1ab868f075eb6897b61b15f8` against
+producer `6604ceea74152a2e8bb1b56e5605bd4feecd8365`. This is source-patched
+integration evidence, not registry adoption. All evidence below for `c04269a`
+is historical and does not qualify this revision.
 
 ## Historical initial validation (`c04269a`)
 
@@ -266,3 +270,50 @@ an explicit coverage gap; do not add real-old-system compatibility claims withou
 actual evidence. External consumers are unknown, not absent. No published
 archive or tag is replaced; failures require a reviewed corrective release,
 with any yank separately authorized.
+
+## Authorized 0.3.3 release preparation (2026-11-01)
+
+Publication is authorized, with the coordinator as sole publisher using existing
+local Cargo credentials. This preparation does not publish, provision credentials,
+or create/move tags. All five 0.3.3 registry versions and v0.3.3 were absent at
+preparation start. Published 0.3.2 remains unchanged and lacks these fixes.
+
+### Release notes
+
+- linux-abi-scan: F1/F3 bounded version-chain parsing, section/range validation
+  and checked arithmetic return errors for malformed/resource-exhausting ELF.
+  Large fixed-size tables remain accepted (R1); equivalent executable aliases
+  coalesce while distinct mappings retain findings (R2). Resource limits can
+  reject unusually large otherwise valid metadata; no partial report is emitted.
+- kernel-abi-tools: F4/F5 explicitly forward existing CARGO*/RUST* names on
+  Docker and Podman and attach redirected stdin without a TTY. Forwarding can
+  include registry credentials; use trusted images and unset unnecessary values.
+- linux-targets, libc-abi-tools and umbrella linux-abi-tools participate under
+  the existing five-package lockstep policy. No new functionality, API, MSRV,
+  upstream glibc dependency, generated data, profile, provider input or build
+  algorithm change is included. Real Cargo/compiler scan output is unchanged.
+
+Existing SELinux relabeling, rootful ownership, foreign-ABI OCI behavior, signal
+status and forced-cache concurrency limitations remain as documented above.
+Provider legal/provenance/pack/replay gates remain in force; unchanged provider
+inputs do not require an unrelated full matrix rebuild. Tier 3 remains deferred
+and unavailable, with no new real-old-system compatibility claim.
+
+### Candidate gates and publication handoff
+
+Five manifests, seven internal minima and five workspace lock entries move to
+0.3.3. Both upstream glibc requirements/resolutions/checksums remain at 0.1.0.
+Required candidate fmt/MSRV/clippy/tests/docs/package validation and all-five
+archive contents/VCS/license audits are pending. Native focused hosted validation
+will identify the exact candidate SHA. Independent release-preparation review is
+required before normal merge. Reviewed implementation remains 6604ceea; candidate
+changes are metadata and this record only.
+
+The sole publisher must use the exact merged release commit and publish in order:
+linux-targets → kernel-abi-tools → linux-abi-scan → libc-abi-tools → linux-abi-tools.
+Verify each official archive checksum, clean VCS identity, index availability and
+non-yanked status before proceeding. Report ALL_FIVE_PUBLISHED before tagging the
+exact release commit; verify all five docs.rs builds after publication. Candidate
+archive hashes are preparation evidence, not substitutes for official downloads.
+Downstream minima, registry-lock adoption and unpatched locked-install gates
+remain as specified above and are separate from producer source merge.
