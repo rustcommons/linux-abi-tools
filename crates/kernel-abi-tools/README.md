@@ -24,7 +24,8 @@ Part of the [linux-abi-tools](https://github.com/rustcommons/linux-abi-tools/blo
 (distribution presets), and used by [cargo-libc](https://github.com/rustcommons/cargo-libc).
 The glibc side answers "will it link and load?"; this crate answers "will its
 syscalls work on that kernel?". Initial scope: **x86_64 Linux**. Std-only
-Rust; its only dependency is `linux-targets`. Works offline.
+Rust; its only dependency is `linux-targets`. Data queries and local simulation
+work offline; container execution may need network access to obtain the image.
 
 As a library, `local::run` and `container::run` run a program under the
 simulation, `Runner::choose` picks between them, `filter::program` returns the
@@ -83,5 +84,7 @@ runners, BPF generation and syscall queries.
 Cargo runner configuration, profiles, probes, runtime requirements and limitations.
 The [workflow guide](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/WORKFLOWS.md) explains target selection and testing tiers.
 Only syscall availability and madvise advice are simulated; vendor backports and
-other behavior are not generally modeled. Qualification needs a real target host.
+other behavior are not generally modeled. Native x86_64 rules share data; OCI
+foreign-ABI errno/status parity is not qualified. Real old-system qualification
+is deferred, as described in the guide.
 For regeneration and validation, use [the maintainer guide](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/MAINTAINING.md).

@@ -22,7 +22,7 @@ Kernel/profile changes need the local and container self-tests described in
 [AGENTS.md](../AGENTS.md) and the [kernel guide](USING-KERNEL-ABI.md).
 Keep API docs warning-free and use the declared MSRV in addition to the CI toolchain.
 Packaging and publication gates live in [Releasing](RELEASING.md) and the
-[next release plan](RELEASE-PLAN.md); publishing requires explicit authorization.
+[historical 0.3.2 plan](RELEASE-PLAN.md); publishing requires explicit authorization.
 
 ## Producing the data and providers
 

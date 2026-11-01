@@ -3,7 +3,7 @@
 This is an implementation order, not a list of newly supported runtimes.
 Every release from 2.17 through 2.22 has locally and hosted-qualified provider
 integration, and so does every later release through 2.44: all seven stages are complete. All 28
-vendored labels have snapshot tests; that does not establish real providers.
+pinned labels have snapshot tests; that does not establish real providers.
 Each release's provider and its evidence are in [PROVIDERS.md](PROVIDERS.md).
 
 ## Delivery order
@@ -79,11 +79,13 @@ Symbol matrices document exported interfaces; they do not capture every header,
 feature, behavioral, or security change. Maintain source-backed change ledgers
 and focused semantic tests alongside the ABI tables as that evidence is collected.
 
-## Immediate deliverables
+## Completed rollout and remaining work
 
-- Qualify the new exhaustive suite locally and in the four current provider jobs.
+- The exhaustive suite and 28-provider hosted rollout are complete for the
+  recorded scope; see [dated results](PROVIDERS.md). Future additions must use
+  the same gates, not infer qualification from an ABI label.
 - Every stage has its providers (see the [provider index](PROVIDERS.md)). The 2.34 merger
   needed no contract migration: the placeholder libraries remain, and the eight-library
   descriptor describes them. Distribution and kernel qualification remain separate.
 - Collect and normalize 2.16 history without declaring a 2.16 Rust provider.
-- Keep distribution qualification for current 2.17/2.22 inputs tracked separately.
+- Keep real old-system qualification [deferred](ROADMAP.md#deferred-qualification) and separate from ordinary automated release gates.

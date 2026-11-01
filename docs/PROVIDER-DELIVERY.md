@@ -123,8 +123,8 @@ compile fully with Clang, and even there `_IO_stdin_used` differs.
 
 - **glibc supports only GCC.** These sources rely on GCC's attribute and
   section semantics.
-- **Every user already has GCC.** Rust on Linux links through the system C compiler,
-  and providers already take `crtbegin.o`/`crtend.o` from the host GCC.
+- **GCC is an explicit prerequisite.** A Rust installation alone does not provide it;
+  providers also take `crtbegin.o`/`crtend.o` from the host GCC.
 - **The qualification passes.** With the builder's recorded defaults made explicit,
   the host GCC reproduces every release: 2.37–2.44 byte for byte, and older releases
   equivalent, differing only in instruction selection and relocation encodings.
@@ -140,6 +140,8 @@ glibc-provider's Replay workflow repeats this on every push and weekly. A compil
 version whose result differs is reported, and `source` mode is not offered with it.
 
 ### Mode 1: `prebuilt`
+
+Planned design only; no `prebuilt` command or feature is available.
 
 Use exactly the files our CI built and qualified.
 
@@ -183,15 +185,15 @@ Run the same pinned container build that CI runs, on the user's machine.
 The current crates, glibc-abilists and the five workspace crates, stay as they are.
 New data crates keep licenses separate, as glibc-abilists already does for the ABI lists:
 
-| Crate (names to be decided) | Contents | License |
+| Crate (decided names; binaries remain planned) | Contents | License |
 | --- | --- | --- |
 | `glibc-provider-sources` (built 2026-10-12, [glibc-provider](https://github.com/rustcommons/glibc-provider); 3.7 MB) | Deduplicated headers, startup/nonshared sources, generated configuration headers, compile commands, the recorded object interfaces, per-release tables | LGPL-2.1-or-later (glibc and the crate's code); the UAPI headers' own licenses, mostly GPL-2.0 WITH Linux-syscall-note |
 | `glibc-provider-binaries` | Deduplicated CI-built startup objects and nonshared archives, per-release manifests with hashes and CI run | LGPL-2.1-or-later, plus the mode 1 source arrangement |
 
-`libc-abi-tools` gains a `provider` module, following the existing
+`libc-abi-tools` has a `provider` module, following the existing
 `bundled-glibc-data` pattern:
 - **Feature `provider-sources`** (default) depends on `glibc-provider-sources`.
-- **Feature `provider-binaries`** (optional) depends on `glibc-provider-binaries`.
+- **Planned feature `provider-binaries`** would depend on `glibc-provider-binaries`; neither is offered before legal review.
 - **Mode 3** needs neither crate.
 
 Because the data arrives as ordinary crate dependencies, `cargo vendor` and offline
@@ -210,8 +212,8 @@ CLIs offer the same operations.
 # is prepared in the default mode (source) and cached.
 cargo libc build --target x86_64-unknown-linux-gnu.2.28 -- --release
 
-# Choose the mode explicitly (also CARGO_LIBC_PROVIDER_MODE, or config).
-cargo libc build --target x86_64-unknown-linux-gnu.2.28 --provider-mode prebuilt -- --release
+# Choose an available mode explicitly (also CARGO_LIBC_PROVIDER_MODE, or config).
+cargo libc build --target x86_64-unknown-linux-gnu.2.28 --provider-mode container -- --release
 
 # Existing explicit forms keep working.
 cargo libc build --provider /path/provider.txt --target x86_64-unknown-linux-gnu.2.28
@@ -225,7 +227,7 @@ a mismatched release is still refused.
 ### Managing providers
 
 ```sh
-cargo libc provider prepare --glibc 2.28 [--mode source|prebuilt|container]
+cargo libc provider prepare --glibc 2.28 [--mode source|container]
 cargo libc provider list                    # cached providers: release, mode, hashes, origin
 cargo libc provider path --glibc 2.28       # descriptor path, for scripts and plain Cargo
 cargo libc provider verify --glibc 2.28     # recheck hashes and rerun the stub/ABI audit
@@ -293,6 +295,10 @@ For users: [Using glibc providers](USING-PROVIDERS.md) covers choosing a mode, t
 cache, and offline and air-gapped use.
 
 ## Qualification of all three modes
+
+The three-mode procedure below is the design target. Only source/container
+results are implemented and recorded; it is not a claim that CI publishes or
+qualifies a prebuilt mode. The legal gate remains unchanged.
 
 Hosted CI already qualifies the container builds for every release (84 jobs). For
 delivery it additionally:

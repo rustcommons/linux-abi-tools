@@ -108,7 +108,7 @@ Select a runtime with `KERNEL_ABI_ENGINE_ARGS="--runtime crun"` or
 
 ## Verification
 
-- **CI on every push:** every generic and preset profile tested with the
+- **Focused CI on matching source/manifest changes or manual dispatch:** every generic and preset profile tested with the
   local filter on the host, then the generic kernels and three presets in
   SLES 12 SP5 userland under static crun 1.28, both with a static musl probe
   on GitHub's Ubuntu 24.04 runner. Each profile runs 68 syscall checks and 107
@@ -124,8 +124,8 @@ Select a runtime with `KERNEL_ABI_ENGINE_ARGS="--runtime crun"` or
 
 ## Releases
 
-Published to crates.io only; data is compiled in, so nothing is downloaded at
-run time. See [RELEASING.md](RELEASING.md), which also covers
+Published to crates.io only; kernel/preset data is compiled in and needs no
+runtime download. Container engines can still need network access to pull images. See [RELEASING.md](RELEASING.md), which also covers
 disconnected networks. The `profiles/` directory is generated for reference
 and is not part of the crate (`kernel-seccomp generate DIR` recreates it).
 

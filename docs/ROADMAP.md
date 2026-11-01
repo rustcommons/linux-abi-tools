@@ -1,7 +1,8 @@
 # Roadmap
 
-[0.3.2 release qualification](RELEASE-CANDIDATE-0.3.2.md) records the published release;
-[the dated plan](RELEASE-PLAN.md) preserves its scope and dependency analysis.
+[0.3.3 release qualification](REVIEW-FIXES.md#published-033-archives-and-documentation)
+records the current release. [0.3.2 qualification](RELEASE-CANDIDATE-0.3.2.md) and
+[its dated plan](RELEASE-PLAN.md) preserve historical scope and dependency analysis.
 
 Open work only. What exists and how it was tested is in
 [GLIBC-COVERAGE.md](GLIBC-COVERAGE.md), [VALIDATION.md](VALIDATION.md),
@@ -57,8 +58,10 @@ modes are delivered; what remains depends on the legal review.
 
 ## glibc data and ABI metadata
 
-- [ ] Establish authoritative binding, visibility, default-version, alias and TLS
-  metadata, including general alias semantics.
+- [ ] Extend measured binding, visibility, default-version and TLS metadata
+  beyond the [recorded profiles](GLIBC-HISTORY.md#current-coverage-and-provenance),
+  including source-backed general alias semantics. Existing physical-range
+  observations do not establish semantic aliases.
 - [ ] Port upstream's historical migration corrections and inclusion model.
 - [ ] Implement bounded reading and writing of Zig's binary abilists format and compare
   the semantic output with the pinned Zig implementation (order is not canonical).
@@ -73,8 +76,8 @@ modes are delivered; what remains depends on the legal review.
   cannot be recovered.
 - [ ] Normalize pre-2.17 x86_64 evidence and early target/unversioned history with
   dedicated adapters.
-- [ ] Collect native defaults and properties for every supported and historically
-  covered profile.
+- [ ] Extend native defaults and properties beyond the 29 measured profiles;
+  early history and unmeasured distribution builds remain unknown.
 - [ ] Add behavioral, header and feature-change ledgers with primary source references
   and semantic tests.
 - [ ] Expand semantic boundary coverage beyond the focused library behavior suites

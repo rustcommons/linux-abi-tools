@@ -25,7 +25,8 @@ linux-abi-scan target/release/app --distro rhel-7 --tsv      # for tools
 | 3. Qualify | Run on a real host at the target's minimums (e.g. a SLES 12 SP5 VM) | The only qualification |
 
 A scan is the least reliable tier: it reports what a file *could* do, not
-what it *does*. Use it to fail fast; confirm with tiers 2 and 3.
+what it *does*. Use it to fail fast and exercise tier 2. Tier 3 is currently
+unavailable and deferred; no scan or simulation replaces actual target evidence.
 
 ## What it checks
 
@@ -61,7 +62,10 @@ are built from) and target floors from `linux-targets`, so the tiers cannot
 disagree about what a kernel or preset provides. Code scanning recognizes
 calls through the GOT and through PLT stubs (including IBT `endbr64`/`bnd`
 stubs). The ELF reader is std-only and bounds-checked; files without section
-headers are rejected.
+headers are rejected. Version-chain, aggregate work/string-copy and scan-site
+budgets can reject unusually large otherwise valid inputs with an explicit error,
+not a partial report. Large fixed-size tables do not share the version-chain
+count cap; see the [0.3.3 limits and qualification](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/REVIEW-FIXES.md#implemented-scope).
 
 Validated 2026-10-10 against synthetic ELF files for every pattern (any OS)
 and real binaries on Linux 6.18 (WSL2): a C program with a raw `statx`

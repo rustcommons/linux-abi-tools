@@ -87,6 +87,9 @@ The stubs are used only for linking and never deployed. The
 
 **Status: implemented in `linux-abi-scan`** (tested on synthetic ELF files and
 real binaries on Linux 6.18; called by `cargo libc inspect --distro`/`--kernel`).
+The [0.3.3 record](REVIEW-FIXES.md#implemented-scope) documents current parser
+and site budgets, large valid table acceptance, and exact release qualification;
+resource exhaustion is an explicit error, not a partial scan.
 
 ```sh
 linux-abi-scan target/release/app --distro sles-12-sp5 --strict --verbose --tsv

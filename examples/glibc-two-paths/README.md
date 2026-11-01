@@ -1,5 +1,11 @@
 # Comparing prebuilt and source built glibc inputs
 
+Historical experiment/validation record (2026-10-09 onward). Results and
+then-pending work below describe their recorded revisions, not current feature
+or release status. For maintained usage and current qualification, see
+[Using providers](../../docs/USING-PROVIDERS.md), [the provider index](../../docs/PROVIDERS.md)
+and [the 0.3.3 release record](../../docs/REVIEW-FIXES.md#published-033-archives-and-documentation).
+
 This experiment builds the same small C program for x86_64 Linux using two
 glibc 2.17 environments. It makes the input sourcing decision in the project
 roadmap concrete. It uses real libc libraries; generated ABI stubs and

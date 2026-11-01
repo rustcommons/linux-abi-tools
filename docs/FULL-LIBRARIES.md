@@ -1,5 +1,11 @@
 # Full glibc 2.17 library experiment
 
+Historical experiment/validation record (2026-10-09 onward). Results and
+then-pending work below describe their recorded revisions, not current feature
+or release status. For maintained usage and current qualification, see
+[Using providers](USING-PROVIDERS.md), [the provider index](PROVIDERS.md)
+and [the 0.3.3 release record](REVIEW-FIXES.md#published-033-archives-and-documentation).
+
 The experimental generator now covers every public numeric GLIBC symbol/version
 definition in the eight pinned x86_64 glibc 2.17 lists. Both the prebuilt CentOS
 and source-built reference trees produce 2915 definitions across eight link-only

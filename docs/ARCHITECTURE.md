@@ -21,8 +21,11 @@ flowchart LR
 
 `version.rs` parses numeric symbol versions independently of release policy.
 `glibc.rs` owns glibc file layouts, parser rules, release snapshots, and source
-collection. `main.rs` handles CLI arguments and presentation. No external Rust
-dependencies or unsafe code are used.
+collection. `main.rs` handles CLI arguments and presentation. The root crate uses
+only the standard library and the optional rustcommons
+`glibc-abilists` and `glibc-provider-sources` inputs; see the feature declarations
+in [Cargo.toml](../Cargo.toml). The kernel local runner uses platform FFI in an
+explicit unsafe boundary; this workspace is not an unsafe-free runtime.
 
 `elf.rs` separately collects SONAME and defined dynamic-symbol evidence from
 bounded ELF64 x86_64 inputs, including GNU default versions, binding, visibility,
@@ -67,8 +70,10 @@ T entries does not mean the bundled files fully identify thread-local exports.
 Those gaps require authoritative ELF/source evidence before generating DSOs.
 
 Link-only DSOs also cannot replace real CRT/nonshared code, libc implementations,
-headers, or compiler runtimes. The snapshot data is not currently consumed by
-`cargo-libc`; it continues to require a real target sysroot.
+headers, or compiler runtimes. cargo-libc consumes this workspace's metadata
+and provider APIs and can prepare a provider automatically in `source` or
+`container` mode. Explicit sysroots remain an alternative; see
+[Using providers](USING-PROVIDERS.md).
 
 The standalone Cargo example `minimal_glibc_stub` exercises assembly/version
 script generation for two glibc 2.17 functions. It requires reference ELF evidence
@@ -89,6 +94,15 @@ future work. Cargo preserves host build units, selects explicit target inputs,
 and checks direct ELF requirements; independent experiments audit link/runtime paths.
 See [stub generation](STUB-GENERATION.md) and [full libraries](FULL-LIBRARIES.md).
 
+## Workspace boundaries
+
+`linux-targets` resolves floors and presets; `kernel-abi-tools` derives syscall
+availability and local BPF/OCI simulation from shared data; `linux-abi-scan`
+performs tier 1 inspection with explicit parser/work/site limits. Their APIs
+are re-exported by the library-only `linux-abi-tools` package. See the
+[requirements index](REQUIREMENTS.md) for implementation and bounded evidence.
+A clean scan or modern-host simulation is not real old-system qualification.
+
 ## Updating upstream
 
 ABI lists are updated in [glibc-abilists](https://github.com/rustcommons/glibc-abilists):
@@ -100,6 +114,6 @@ here, run the all-release regression tests, regenerate the reference with
 unqualified release as a supported runtime target. Code adapted from Zig keeps
 its MIT notice.
 
-## Second provider: GNU glibc 2.22
+## Provider release selection
 
 The unchanged six-field v1 descriptor now selects exactly one release from 2.17 through 2.44 (`RELEASES` in `src/provider.rs`), and cargo-libc rejects mismatched requests before building. The source-built profiles contain 2921 (2.18–2.21) to 4315 (2.44) public definitions across eight generated DSOs, including the 2.34 merger, after which libpthread, libdl, librt and libutil are small placeholders; before 2.28 the provider also links `libpthread_nonshared.a`, which 2.28 merged into `libc_nonshared.a`. Existing 2.17 descriptors and both input routes remain valid. Shared validation scripts select the release explicitly, including pthread default-attribute, sigvec default-removal, and fmemopen version boundaries, compatibility-only rejection, and matrix-selected Cargo newer-symbol rejection tests. See the [provider index](PROVIDERS.md) and the per-release documents it links; actual distribution qualification remains separate.

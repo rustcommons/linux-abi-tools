@@ -97,8 +97,9 @@ its entire dependency closure, CPU, kernel, or distribution.
 
 Today the equivalent selection is explicit `--glibc 2.17 --provider FILE`, with
 the application's Cargo options after `--`; see [the current contract](PROVIDER-CONTRACT.md).
-Target-suffix parsing is implemented. Provider discovery/download, authenticated
-cache installation, and user release SDKs remain future work.
+Target-suffix parsing and automatic local provider preparation/cache lookup are
+implemented in cargo-libc. Authenticated prebuilt downloads and relocatable user
+SDKs remain future work; see [Using providers](USING-PROVIDERS.md).
 
 ## How cargo-zigbuild and Zig handle this
 
@@ -118,8 +119,8 @@ the destination supplies the actual shared-library implementations.
 
 Thus the "database" is an essential part, alongside headers, startup/nonshared
 sources, generators, linker/compiler integration, and cache management. Our
-symbol matrix is the metadata counterpart. Our qualified providers currently
-obtain real headers/CRT/nonshared support from pinned historical input trees.
+symbol matrix is the metadata counterpart. Our qualified providers obtain headers/CRT/nonshared support either by replaying
+recorded source inputs with host GCC or through pinned container builds.
 This is a narrower implementation; broad Zig parity is not established.
 
 ## What user release artifacts still require
@@ -133,8 +134,8 @@ layout and a relocatable/authenticated contract still need implementation.
 Before publishing those packages, establish immutable identity, complete
 input/source/license inventory, supported host tools and target scope, install
 and cache rules, integrity/publisher verification, compiler-support selection,
-and permanent compatibility tests. Then add target-suffix resolution and native
-dependency adapters. A CI tar bundle is useful validation of transfer and
+and permanent compatibility tests. Target-suffix resolution already exists;
+broader native dependency adapters remain separate work. A CI tar bundle is useful validation of transfer and
 rematerialization, but does not complete those release requirements.
 
 See [current coverage](GLIBC-COVERAGE.md), [provider rollout](GLIBC-PROVIDER-PLAN.md),

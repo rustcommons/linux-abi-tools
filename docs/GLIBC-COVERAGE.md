@@ -1,14 +1,18 @@
 # Current glibc coverage
 
-Coverage recorded on 2026-10-10. The target is **x86_64 Linux, ELF64 little-endian,
+Initial coverage was recorded on 2026-10-10; this index was reviewed on
+2026-11-01. Later all-release/source-mode runs retain their own dates and
+revisions below and in [PROVIDERS.md](PROVIDERS.md).
+The target is **x86_64 Linux, ELF64 little-endian,
 dynamically linked applications**. The experimental providers currently select
 glibc **2.17 through 2.44**, every release in the pinned ABI lists, each with local and hosted
 provider qualification.
 Having a snapshot for a version does not establish a provider
 or qualify its runtime.
 
-Provider CI now has three preparation jobs (one per supported release) and six
-Rust 1.99/Clang 21 or 24 application jobs consuming the same prepared inputs.
+The maintained provider workflow has 28 preparation jobs and 56
+Rust 1.99/Clang 21 or 24 application jobs consuming the prepared inputs.
+The following three-provider run is historical evidence for that earlier scope.
 Both application variants compile Rust. See [CI and release artifacts](CI-AND-RELEASE-ARTIFACTS.md).
 All nine [split-workflow jobs](https://github.com/rustcommons/linux-abi-tools/actions/runs/38069527581)
 passed at `8939827`, including cross-runner input restoration and dynamic-module auditing.
@@ -22,7 +26,7 @@ to add basic support for libc, libm, libpthread, libdl, librt, or libutil.
 
 Counts are distinct **library / symbol / version tuples**, not unique function
 names. Compatibility versions count separately. Objects are included. The union
-column covers the 28 vendored snapshot labels, 2.17 through 2.44.
+column covers the 28 pinned snapshot labels, 2.17 through 2.44.
 
 | Matrix library | Provider SONAME | Union interfaces | Present in 2.17 | Present in 2.18 | Present in 2.22 | Dedicated real-runtime coverage |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
@@ -126,10 +130,11 @@ does not describe. These modules are not added to the eight-library ABI matrix.
 - Qualify native C dependencies and broader whole-program dependency resolution
   separately from isolated-library membership. A symbol absent from one DSO
   may legitimately resolve through another library in a complete application.
-- Establish each additional provider, including the 2.34 merged-library layout,
-  using [the provider rollout plan](GLIBC-PROVIDER-PLAN.md).
-- Qualify actual intended distributions and kernels, including SLES 12 SP5;
-  modern-host execution of source-built runtimes does not establish that result.
+- Preserve the completed 2.17–2.44 rollout, including the 2.34 merged-library
+  layout; apply [the rollout gates](GLIBC-PROVIDER-PLAN.md) to future additions.
+- Real old-system qualification is [deferred](ROADMAP.md#deferred-qualification)
+  while infrastructure is unavailable; modern-host source-runtime execution does
+  not establish that result. This is not an ordinary-release blocker.
 - Inventory other glibc-produced DSOs, modules, and archives before expanding
   scope. NSS/libnsl inputs are transferred for the tested runtime dependency
   paths, but have no exhaustive public-interface acceptance matrix. Additional
