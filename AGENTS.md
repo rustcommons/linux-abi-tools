@@ -69,7 +69,9 @@ every workflow and its cargo-libc mapping; keep it in step with changes.
 - Two runners apply the simulation: the local runner (in-process classic-BPF
   filter from `filter::program`, host userland, no root) and the container
   runner (OCI profile, image userland). The BPF filter and the JSON profile
-  must make the same decisions; `filter` tests check both against the data.
+  must make the same decisions for native x86_64 syscalls; `filter` tests check
+  them against the data. Foreign-ABI rejection is runtime-specific for OCI:
+  do not claim i386/x32 errno/status parity without runtime evidence.
 
 ## Scope and implementation: linux-targets
 

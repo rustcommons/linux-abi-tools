@@ -663,7 +663,13 @@ fn code_sites(elf: &elf::Elf) -> Vec<Site> {
         for i in 0..b.len() {
             if b[i..].starts_with(&[0xff, 0x25]) {
                 if let Some(rel) = rel32(b, i + 2) {
-                    let slot = (c.addr as i64 + i as i64 + 6 + rel) as u64;
+                    let Some(slot) = c
+                        .addr
+                        .checked_add(i as u64 + 6)
+                        .and_then(|a| a.checked_add_signed(rel))
+                    else {
+                        continue; // no representable target for this heuristic match
+                    };
                     let mut start = i;
                     if start >= 1 && b[start - 1] == 0xf2 {
                         start -= 1; // bnd
@@ -685,9 +691,11 @@ fn code_sites(elf: &elf::Elf) -> Vec<Site> {
             let here = c.addr + i as u64;
             let slot = match (b[i], b[i + 1]) {
                 (0xe8 | 0xe9, _) => rel32(b, i + 1)
-                    .map(|rel| (here as i64 + 5 + rel) as u64)
+                    .and_then(|rel| here.checked_add(5)?.checked_add_signed(rel))
                     .and_then(|t| stubs.get(&t).copied()),
-                (0xff, 0x15 | 0x25) => rel32(b, i + 2).map(|rel| (here as i64 + 6 + rel) as u64),
+                (0xff, 0x15 | 0x25) => {
+                    rel32(b, i + 2).and_then(|rel| here.checked_add(6)?.checked_add_signed(rel))
+                }
                 _ => None,
             };
             let window = &b[i.saturating_sub(LOOKBACK)..i];

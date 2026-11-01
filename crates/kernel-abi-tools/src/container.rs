@@ -2,6 +2,7 @@
 
 use crate::{seccomp_profile, Target};
 use std::env;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -38,7 +39,8 @@ impl Engine {
 /// `CARGO_MANIFEST_DIR` values keep working. A bare `program` name (no `/`)
 /// runs from the image. A host program is mounted as a single file, never its
 /// directory, which could hide the image's own `/bin` or `/usr/bin`.
-/// `CARGO*`/`RUST*` variables are forwarded. Suitable for a Cargo runner.
+/// `CARGO*`/`RUST*` variables are forwarded by name. Standard input stays
+/// attached (including pipes), without allocating a TTY. Suitable for a Cargo runner.
 ///
 /// # Errors
 ///
@@ -70,19 +72,13 @@ pub fn run(
     fs::write(&profile.0, seccomp_profile(target))
         .map_err(|e| format!("{}: {e}", profile.0.display()))?;
 
-    let mut cmd = Command::new(&engine.program);
-    cmd.args(&engine.engine_args);
-    cmd.args(["run", "--rm", "--security-opt"]);
-    cmd.arg(format!("seccomp={}", profile.0.display()));
-    cmd.arg("-v").arg(format!("{0}:{0}:z", cwd.display()));
-    match &host_program {
-        Some(p) if !p.starts_with(&cwd) => {
-            cmd.arg("-v").arg(format!("{0}:{0}:ro,z", p.display()));
-        }
-        _ => {}
-    }
-    cmd.arg("-w").arg(&cwd);
-    cmd.args(["-e", "CARGO*", "-e", "RUST*"]);
+    let mut cmd = container_command(
+        engine,
+        &cwd,
+        host_program.as_deref(),
+        &profile.0,
+        env::vars_os().map(|(name, _)| name),
+    );
     cmd.args(&engine.run_args);
     cmd.arg(image);
     match &host_program {
@@ -95,6 +91,42 @@ pub fn run(
         .status()
         .map_err(|e| format!("cannot start {}: {e}", engine.program))?;
     Ok(status.code().unwrap_or(128))
+}
+
+fn container_command(
+    engine: &Engine,
+    cwd: &Path,
+    host_program: Option<&Path>,
+    profile: &Path,
+    environment: impl IntoIterator<Item = OsString>,
+) -> Command {
+    let mut cmd = Command::new(&engine.program);
+    cmd.args(&engine.engine_args);
+    cmd.args(["run", "--rm", "-i", "--security-opt"]);
+    cmd.arg(format!("seccomp={}", profile.display()));
+    cmd.arg("-v").arg(format!("{0}:{0}:z", cwd.display()));
+    match host_program {
+        Some(p) if !p.starts_with(cwd) => {
+            cmd.arg("-v").arg(format!("{0}:{0}:ro,z", p.display()));
+        }
+        _ => {}
+    }
+    cmd.arg("-w").arg(cwd);
+    // Docker treats CARGO* literally; enumerate names for both engines.
+    // Values remain in the inherited environment, never in command arguments.
+    let mut names: Vec<_> = environment
+        .into_iter()
+        .filter(|name| {
+            let bytes = name.as_encoded_bytes();
+            bytes.starts_with(b"CARGO") || bytes.starts_with(b"RUST")
+        })
+        .collect();
+    names.sort();
+    names.dedup();
+    for name in names {
+        cmd.arg("-e").arg(name);
+    }
+    cmd
 }
 
 fn env_words(name: &str) -> Vec<String> {
@@ -143,6 +175,45 @@ impl Drop for TempFile {
 mod tests {
     use super::*;
     use crate::KernelVersion;
+
+    #[test]
+    fn docker_and_podman_attach_stdin_and_forward_only_matching_names() {
+        for program in ["docker", "podman"] {
+            let engine = Engine {
+                program: program.into(),
+                engine_args: vec!["--example".into()],
+                run_args: vec![],
+            };
+            let command = container_command(
+                &engine,
+                Path::new("/work"),
+                None,
+                Path::new("/profile.json"),
+                ["RUSTFLAGS", "CARGO_HOME", "OTHER_SECRET", "CARGO_HOME"].map(OsString::from),
+            );
+            let args: Vec<_> = command.get_args().map(|s| s.to_str().unwrap()).collect();
+            assert_eq!(
+                args,
+                [
+                    "--example",
+                    "run",
+                    "--rm",
+                    "-i",
+                    "--security-opt",
+                    "seccomp=/profile.json",
+                    "-v",
+                    "/work:/work:z",
+                    "-w",
+                    "/work",
+                    "-e",
+                    "CARGO_HOME",
+                    "-e",
+                    "RUSTFLAGS"
+                ]
+            );
+            assert!(!args.contains(&"-t"));
+        }
+    }
 
     #[test]
     fn rejects_missing_image_and_missing_host_program() {

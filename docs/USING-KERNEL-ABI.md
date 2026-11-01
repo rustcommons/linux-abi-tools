@@ -32,10 +32,21 @@ inside it cannot gain privileges. It does not change the userland, so use the
 container to run against the target's real glibc.
 
 The container runner mounts the working directory, and the program file if it is outside it,
-at their own absolute paths, and forwards `CARGO*`/`RUST*` variables. A bare
+at their own absolute paths, and forwards `CARGO*`/`RUST*` variables by name
+on both Docker and Podman. Stdin stays attached, including redirected input;
+no TTY is allocated. A bare
 program name (`sh`) runs from the image. Engine and runtime options come from
 `CONTAINER_ENGINE` (default `podman`), `KERNEL_ABI_ENGINE_ARGS` (e.g.
 `--runtime crun`) and `KERNEL_ABI_RUN_ARGS` (e.g. `--network none`).
+
+Mounts use `:z` (and `:ro,z` for an external program file). On SELinux hosts
+this can recursively relabel the mounted working tree; use a dedicated project
+directory, not a broad directory such as your home. See the
+[engine's bind-mount guidance](https://docs.docker.com/engine/storage/bind-mounts/).
+The runner does not select a container user or repair file ownership. Rootful
+engines with a root image user can create root-owned files in the mounted tree;
+select an appropriate user through `KERNEL_ABI_RUN_ARGS` when needed. Mount and
+user defaults are unchanged; SELinux/rootful ownership tests remain pending.
 
 ### As a Cargo runner
 
@@ -59,9 +70,11 @@ which is the working directory Cargo uses for tests.
 ## How a profile works
 
 A profile is an OCI seccomp profile (Podman, Docker, CRI-O). The local
-filter (`filter::program`) makes the same decisions in BPF, and its tests
+filter (`filter::program`) follows the same data for native x86_64 calls, and its tests
 check it against the data for every syscall number and advice value of every
-generic kernel and preset:
+generic kernel and preset. The local filter rejects i386 and x32 calls with
+`ENOSYS`; the OCI profile selects x86_64, leaving foreign-ABI rejection to the
+runtime. Matching i386/x32 errno/status behavior is not qualified:
 
 - **Default action `ENOSYS`; allowlist of the syscalls the target kernel has.**
   It is an allowlist because runtimes resolve names with their own libseccomp

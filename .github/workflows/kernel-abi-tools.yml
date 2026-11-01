@@ -76,6 +76,8 @@ jobs:
           $(cd profiles/distro && ls | sed 's/\.json$//')
       - name: Static crun (libseccomp that names every syscall)
         run: bash scripts/install-crun.sh "$RUNNER_TEMP/crun"
+      - name: Docker and Podman stdin, environment and exit status
+        run: bash scripts/container-io-test.sh "$GITHUB_WORKSPACE/target/release/kernel-seccomp" "$RUNNER_TEMP/crun"
       - name: Self-test every profile in SLES 12 SP5 userland
         env:
           KERNEL_ABI_ENGINE_ARGS: --runtime ${{ runner.temp }}/crun
