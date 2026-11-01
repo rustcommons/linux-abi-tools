@@ -168,6 +168,13 @@ are not tier 3 evidence.
 
 ## Planned next release and registry adoption
 
+**Historical plan, superseded for producer preparation:** the recommendation
+below predates the authorized 0.3.3 candidate. Its statements about no version,
+dependency or lock edits apply only to that earlier plan-only change. Current
+producer status and qualification are in
+[Authorized 0.3.3 release preparation](#authorized-033-release-preparation-2026-11-01);
+the downstream adoption gates below remain applicable.
+
 **Recommendation, not an enacted release:** publish the five workspace crates
 as **0.3.3**, then adopt them in a **cargo-libc 0.2.2** patch release. These are
 compatible bug-fix proposals under the maintained policies, conditional on final
@@ -295,6 +302,8 @@ preparation start. Published 0.3.2 remains unchanged and lacks these fixes.
 
 Existing SELinux relabeling, rootful ownership, foreign-ABI OCI behavior, signal
 status and forced-cache concurrency limitations remain as documented above.
+The provider cache key includes the libc-abi-tools package version, so upgrading
+to 0.3.3 can require fresh provider preparation despite unchanged build inputs.
 Provider legal/provenance/pack/replay gates remain in force; unchanged provider
 inputs do not require an unrelated full matrix rebuild. Tier 3 remains deferred
 and unavailable, with no new real-old-system compatibility claim.
@@ -344,7 +353,9 @@ passed on the exact release candidate: Windows/Ubuntu workspace checks, MSRV,
 official Rust 1.90 Cargo/compiler ELF acceptance, local/container kernel profiles,
 and Docker/Podman environment/stdin/status checks. This is modern-host native
 x86_64 simulation, not tier 3 qualification. Independent release-preparation
-review remains pending before normal merge. No unchanged provider matrix was
+review approved candidate `dc36fb26` and evidence head `eca532e`. The final
+README/historical-plan documentation corrections await a narrow delta check
+before normal merge. No unchanged provider matrix was
 rerun. Source-patched consumer integration above remains applicable to unchanged
 implementation; registry adoption and installs follow publication.
 
