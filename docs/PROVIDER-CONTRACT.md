@@ -26,7 +26,7 @@ relative symlinks inside those directories are allowed.
 
 | Directory | Required files and purpose |
 | --- | --- |
-| sysroot | Exact selected-release `usr/include/features.h`; `usr/lib64/{crt1.o,crti.o,crtn.o,libc_nonshared.a}`, plus `usr/lib64/libpthread_nonshared.a` before 2.28 (glibc 2.28 merged it into `libc_nonshared.a`); real `lib64/ld-linux-x86-64.so.2` |
+| sysroot | Exact selected-release `usr/include/features.h`; `usr/lib64/{crt1.o,crti.o,crtn.o,libc_nonshared.a}`, plus `usr/lib64/libpthread_nonshared.a` before 2.28 (glibc 2.28 merged it into `libc_nonshared.a`); `lib64/ld-linux-x86-64.so.2` (a link-only loader stub in source mode; a real loader in container input trees) |
 | stubs | Eight generated DSOs with exact SONAME filenames and `lib{name}.so` symlinks resolving to them; loader uses `libld.so` |
 | gcc-startup | Explicit GCC `crtbegin.o`/`crtend.o`, providing compiler startup support |
 | compiler-runtime | `libgcc_s.so.1` and `libgcc_s.so` to link against: a generated link-only stub with GCC 4.8.5's interface (`libc-abi libgcc stub`), the same for every release, so programs need nothing newer than CentOS 7's compiler runtime. Its functions trap; programs run with the target system's real `libgcc_s.so.1`, never the stub |

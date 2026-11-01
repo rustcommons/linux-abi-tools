@@ -92,4 +92,6 @@ No Zig installation is required.
 
 See the [roadmap](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/ROADMAP.md) for open work and the
 [0.3.3 release record](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/REVIEW-FIXES.md#published-033-archives-and-documentation) for published versions, checksums and validation evidence.
-The crates are published to crates.io.
+The crates are published to crates.io. The
+[requirements and documentation map](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/REQUIREMENTS.md)
+indexes confirmed constraints, bounded evidence and remaining gaps.

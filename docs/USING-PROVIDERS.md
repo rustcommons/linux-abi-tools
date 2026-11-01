@@ -10,7 +10,7 @@ release, 2.17 through 2.44, on a newer machine. It contains:
 - a link-only `libgcc_s` stub with GCC 4.8.5's interface;
 - your GCC's `crtbegin.o` and `crtend.o`.
 
-A provider is described by a six-line descriptor, `provider.txt`
+A provider is described by a six-field v1 descriptor, `provider.txt`
 ([PROVIDER-CONTRACT](https://github.com/rustcommons/cargo-libc/blob/main/docs/PROVIDER-CONTRACT.md)).
 It is not a runtime: the program runs on the target system's own glibc.
 
@@ -27,8 +27,10 @@ there.
 | `container` | Runs the pinned container build that CI qualifies: the release's signed source archive, built in a digest-pinned CentOS 7, Debian 9 or Debian 12 image. | podman or docker, network, GCC, binutils, curl | 5–30 minutes per release | Source mode refused your GCC, or you want the objects CI built byte for byte. |
 | `prebuilt` | CI-built objects, downloaded. | — | — | Not available: it waits on a legal review. |
 
-Both available modes generate the same stubs, `libgcc_s` stub and headers. They differ only
-in how the startup objects are made. CI qualifies both available modes for every
+Both available modes generate the same stubs, `libgcc_s` stub and headers.
+Startup/nonshared objects are built by different routes. Container mode also
+retains real runtime libraries; source mode uses a link-only loader stub and
+supplies no runtime implementation. CI qualifies both available modes for every
 release ([PROVIDERS.md](PROVIDERS.md#delivery-modes-per-release)). One mode never
 falls back to another: if `source` refuses, nothing is used until you choose
 `container`.

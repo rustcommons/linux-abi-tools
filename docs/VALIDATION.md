@@ -1,5 +1,11 @@
 # Validation — bootstrap milestone
 
+Historical experiment/validation record (2026-10-09 onward). Results and
+then-pending work below describe their recorded revisions, not current feature
+or release status. For maintained usage and current qualification, see
+[Using providers](USING-PROVIDERS.md), [the provider index](PROVIDERS.md)
+and [the 0.3.3 release record](REVIEW-FIXES.md#published-033-archives-and-documentation).
+
 ## Provider contract and Cargo integration
 
 The local version-1 exporter and companion `--provider` mode passed in WSL with

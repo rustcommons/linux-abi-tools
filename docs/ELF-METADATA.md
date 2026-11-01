@@ -94,4 +94,5 @@ IFUNC, or unsupported-visibility evidence rather than guessing. Both real input
 routes still pass the link/run and newer-API rejection checks. This generator
 is still an ordinary-function example. A separate
 [expanded emitter](STUB-GENERATION.md) now exercises selected multi-version,
-IFUNC, object, and TLS exports; complete libraries and other releases remain open.
+IFUNC, object, and TLS exports. Those are historical experiment boundaries;
+complete 2.17–2.44 provider qualification is recorded in [the provider index](PROVIDERS.md).

@@ -1,5 +1,12 @@
 # glibc providers
 
+The per-release links and run tables below are historical qualification records
+for their exact input/tool/source revisions, not evidence that those old command
+interfaces or rollout stages are still current. Maintained setup is in
+[Using providers](USING-PROVIDERS.md); [0.3.3 release evidence](REVIEW-FIXES.md#published-033-archives-and-documentation)
+and [the documentation map](REQUIREMENTS.md#documentation-map) distinguish current
+usage, reference data and historical records.
+
 Every glibc release in the pinned ABI lists, 2.17 through 2.44, has an experimental
 x86_64 provider: generated link-only stubs for the eight libraries plus real headers,
 CRT objects, nonshared archives, loader, and runtime DSOs from a pinned, signature-checked

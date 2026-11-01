@@ -1,5 +1,11 @@
 # Experimental link only generation
 
+Historical experiment/validation record (2026-10-09 onward). Results and
+then-pending work below describe their recorded revisions, not current feature
+or release status. For maintained usage and current qualification, see
+[Using providers](USING-PROVIDERS.md), [the provider index](PROVIDERS.md)
+and [the 0.3.3 release record](REVIEW-FIXES.md#published-033-archives-and-documentation).
+
 The expanded emitter renders x86_64 assembly and GNU version scripts from
 selected real ELF definitions. It preserves observed symbol versions/defaults,
 binding, visibility, kinds, object/TLS sizes, and declared section alignment.

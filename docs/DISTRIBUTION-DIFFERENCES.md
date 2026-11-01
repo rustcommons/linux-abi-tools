@@ -1,7 +1,8 @@
 # Generic GNU providers and distribution glibc
 
-The providers in [PROVIDERS.md](PROVIDERS.md) are built from unmodified GNU glibc
-release archives with upstream's default configuration. A distribution's glibc is
+The generic providers in [PROVIDERS.md](PROVIDERS.md) use pinned GNU glibc
+release archives with recorded build configuration and source adjustments
+([maintenance pipeline](MAINTAINING.md#93-provider-pipeline)). A distribution's glibc is
 the same release with that distribution's configuration and patches. The two can
 differ in which interfaces new code may link, in their code, and occasionally in
 the interfaces they export. This document records the differences we have
