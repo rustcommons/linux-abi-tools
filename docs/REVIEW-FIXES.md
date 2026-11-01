@@ -1,8 +1,9 @@
 # Unreleased parser and container I/O fixes
 
 Scope reviewed 2026-11-01 against published 0.3.2 (`d404073e2329405e9e6f2dd1005fd8671e0d0f41`).
-This work does not change versions, dependency requirements, upstream data, profiles
-or provider build inputs. It is not a release announcement.
+The reviewed source fixes did not change versions or dependency requirements.
+The authorized 0.3.3 preparation below updates package metadata only; upstream
+data, profiles and provider build inputs remain unchanged. Nothing is published yet.
 
 ## Implemented scope
 
@@ -76,10 +77,13 @@ container kernel profiles, Docker/Podman I/O integration, and the official Rust
 1.90 Cargo/compiler-file acceptance test. Hosted acceptance produced the same
 659 and 473 findings as the local scans.
 
-Independent re-review and fresh combined cargo-libc integration remain pending
-for the revised source. All evidence below for `c04269a` is historical and does
-not qualify this revision. Later evidence-only documentation changes do not
-replace the tested source identity.
+Independent re-review approved the revised source, merged in PR #2 at
+`c24ed06a9ac4e7014f9384b0692f22c098e21b99`.
+[Combined run 41265226302](https://github.com/rustcommons/cargo-libc/actions/runs/41265226302)
+passed with consumer `192e0157063f6b2c1ab868f075eb6897b61b15f8` against
+producer `6604ceea74152a2e8bb1b56e5605bd4feecd8365`. This is source-patched
+integration evidence, not registry adoption. All evidence below for `c04269a`
+is historical and does not qualify this revision.
 
 ## Historical initial validation (`c04269a`)
 
@@ -163,6 +167,13 @@ Real old-system qualification remains deferred; containers on a modern kernel
 are not tier 3 evidence.
 
 ## Planned next release and registry adoption
+
+**Historical plan, superseded for producer preparation:** the recommendation
+below predates the authorized 0.3.3 candidate. Its statements about no version,
+dependency or lock edits apply only to that earlier plan-only change. Current
+producer status and qualification are in
+[Authorized 0.3.3 release preparation](#authorized-033-release-preparation-2026-11-01);
+the downstream adoption gates below remain applicable.
 
 **Recommendation, not an enacted release:** publish the five workspace crates
 as **0.3.3**, then adopt them in a **cargo-libc 0.2.2** patch release. These are
@@ -266,3 +277,93 @@ an explicit coverage gap; do not add real-old-system compatibility claims withou
 actual evidence. External consumers are unknown, not absent. No published
 archive or tag is replaced; failures require a reviewed corrective release,
 with any yank separately authorized.
+
+## Authorized 0.3.3 release preparation (2026-11-01)
+
+Publication is authorized, with the coordinator as sole publisher using existing
+local Cargo credentials. This preparation does not publish, provision credentials,
+or create/move tags. All five 0.3.3 registry versions and v0.3.3 were absent at
+preparation start. Published 0.3.2 remains unchanged and lacks these fixes.
+
+### Release notes
+
+- linux-abi-scan: F1/F3 bounded version-chain parsing, section/range validation
+  and checked arithmetic return errors for malformed/resource-exhausting ELF.
+  Large fixed-size tables remain accepted (R1); equivalent executable aliases
+  coalesce while distinct mappings retain findings (R2). Resource limits can
+  reject unusually large otherwise valid metadata; no partial report is emitted.
+- kernel-abi-tools: F4/F5 explicitly forward existing CARGO*/RUST* names on
+  Docker and Podman and attach redirected stdin without a TTY. Forwarding can
+  include registry credentials; use trusted images and unset unnecessary values.
+- linux-targets, libc-abi-tools and umbrella linux-abi-tools participate under
+  the existing five-package lockstep policy. No new functionality, API, MSRV,
+  upstream glibc dependency, generated data, profile, provider input or build
+  algorithm change is included. Real Cargo/compiler scan output is unchanged.
+
+Existing SELinux relabeling, rootful ownership, foreign-ABI OCI behavior, signal
+status and forced-cache concurrency limitations remain as documented above.
+The provider cache key includes the libc-abi-tools package version, so upgrading
+to 0.3.3 can require fresh provider preparation despite unchanged build inputs.
+Provider legal/provenance/pack/replay gates remain in force; unchanged provider
+inputs do not require an unrelated full matrix rebuild. Tier 3 remains deferred
+and unavailable, with no new real-old-system compatibility claim.
+
+### Candidate gates and publication handoff
+
+Five manifests, seven internal minima and five workspace lock entries move to
+0.3.3. Both upstream glibc requirements/resolutions/checksums remain at 0.1.0.
+Exact release candidate: `dc36fb26aaf06b3740322bc805b67d8b7ebfdfe5`,
+[PR #3](https://github.com/rustcommons/linux-abi-tools/pull/3).
+Reviewed implementation remains `6604ceea`; a checked diff against approved merge
+`c24ed06a` confirms only the five manifests, lockfile and two release documents
+changed. Later evidence-only documentation commits do not replace this identity.
+
+Local ARM64 validation passed with fresh `target/release-033`, two build/test
+workers, Cargo/Rust 1.99 and Rust 1.90 for MSRV:
+
+- `cargo +1.99.0 fmt --all -- --check`.
+- `cargo +1.90.0 check --workspace --all-targets --locked --offline`.
+- Workspace all-target Clippy and root no-default-features all-target Clippy,
+  both locked/offline with `-D warnings`.
+- Workspace all-target tests (113 passed; external toolchain test opt-in),
+  workspace doctests (6 passed), root no-default all-target tests (43 passed).
+- All-feature workspace docs with `--no-deps` and `RUSTDOCFLAGS='-D warnings'`.
+- `cargo +1.99.0 package --workspace --locked`: all five packaged sources
+  verified using Cargo's temporary registry for unpublished internal versions.
+  No publication workaround or dependency update was used.
+
+All five archive audits passed: allowed file lists, byte-for-byte included source,
+normalized manifests/internal minima, generated locks, clean candidate VCS SHA
+and repository-relative paths, MIT/license/notice files, libgcc table, provider
+scripts/input manifests, and unchanged upstream 0.1.0 requirements/checksums.
+No credentials, build output, review docs, instruction files or integration-test directories are packaged.
+
+Candidate archive SHA-256 values (not published checksums):
+
+| Package | Files | SHA-256 |
+| --- | --- | --- |
+| linux-targets | 8 | `ee09d7ba465dfe103766265127694234d6376a810c9f7c6fa3f66d12cfe15288` |
+| kernel-abi-tools | 15 | `64e176f3db8383c2781f119da3d9512c4ad899808bf366669b63acf7eb1a50a1` |
+| linux-abi-scan | 11 | `8745c94d1b4f5e67a5251f7349abf166bf4f5bd740a2352b9464489535cc2a47` |
+| libc-abi-tools | 82 | `ef8289d3d808347b2d02059fe6238f800e3ba2257836d3820e3c7b18bb7714dc` |
+| linux-abi-tools | 7 | `3b343ed97f16bd4037fe36d864ad31d509dd0d97f52a608b718184bd3454d348` |
+
+[Focused native run 41268289801](https://github.com/rustcommons/linux-abi-tools/actions/runs/41268289801)
+passed on the exact release candidate: Windows/Ubuntu workspace checks, MSRV,
+official Rust 1.90 Cargo/compiler ELF acceptance, local/container kernel profiles,
+and Docker/Podman environment/stdin/status checks. This is modern-host native
+x86_64 simulation, not tier 3 qualification. Independent release-preparation
+review approved candidate `dc36fb26` and evidence head `eca532e`. The final
+README/historical-plan documentation corrections await a narrow delta check
+before normal merge. No unchanged provider matrix was
+rerun. Source-patched consumer integration above remains applicable to unchanged
+implementation; registry adoption and installs follow publication.
+
+The sole publisher must use the exact merged release commit and publish in order:
+linux-targets → kernel-abi-tools → linux-abi-scan → libc-abi-tools → linux-abi-tools.
+Verify each official archive checksum, clean VCS identity, index availability and
+non-yanked status before proceeding. Report ALL_FIVE_PUBLISHED before tagging the
+exact release commit; verify all five docs.rs builds after publication. Candidate
+archive hashes are preparation evidence, not substitutes for official downloads.
+Downstream minima, registry-lock adoption and unpatched locked-install gates
+remain as specified above and are separate from producer source merge.
