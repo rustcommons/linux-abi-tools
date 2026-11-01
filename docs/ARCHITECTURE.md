@@ -1,23 +1,78 @@
 # Architecture
 
-The current experimental pipeline keeps ABI evidence, link artifacts, and real
-runtime inputs separate:
+## Implemented workspace boundaries
+
+Arrows below identify API calls or shared data, not a promise of runtime
+compatibility. The umbrella is a library of re-exports; cargo-libc is the
+separate Cargo coordinator, not a workspace crate.
 
 ```mermaid
-flowchart LR
-    A[Tagged glibc source] -->|collect| B[Versioned ABI lists]
-    B --> C[Exact release snapshot]
-    D[Real reference DSOs] --> E[Native ELF evidence]
-    C --> F[Validated ABI and ELF join]
-    E --> F
-    F --> G[Assembly and version scripts]
-    G --> H[Link-only libraries]
-    I[Real CRT nonshared and compiler inputs] --> J[C or Rust link]
-    H --> J
-    J --> K[Executable]
-    K --> L[Real target runtime]
-    C -. future .-> M[Compact ABI database]
+flowchart TB
+    C["cargo-libc<br/>external Cargo coordinator"]
+    subgraph W["Workspace APIs: linux-abi-tools re-exports all four"]
+        T["linux-targets<br/>presets and selection"]
+        L["libc-abi-tools<br/>metadata and providers"]
+        K["kernel-abi-tools<br/>syscall data and runners"]
+        S["linux-abi-scan<br/>bounded ELF inspection"]
+        T -->|preset data and types| K
+        T -->|selected floors| S
+        K -->|kernel facts| S
+    end
+    C -->|resolve| T
+    C -->|prepare and verify| L
+    C -->|run and test| K
+    C -->|inspect built ELF| S
 ```
+
+The boundaries follow the five manifests, [umbrella re-exports](../crates/linux-abi-tools/src/lib.rs),
+[Selection](../crates/linux-targets/src/lib.rs), [runner/data APIs](../crates/kernel-abi-tools/src/lib.rs)
+and [scan entry points](../crates/linux-abi-scan/src/lib.rs). Scanner inspection
+never executes the input. Local simulation uses host userland; container
+simulation uses image userland on the host kernel. Their shared data covers
+native x86_64 syscall availability and madvise advice, not arbitrary kernel
+behavior or OCI foreign-ABI errno parity.
+
+## Implemented provider data flow
+
+The two preparation routes are alternatives, not an automatic fallback.
+Source mode uses recorded library tables without rebuilding real glibc DSOs;
+container mode measures its pinned build's real DSOs. Both supply link inputs,
+not a replacement runtime.
+
+```mermaid
+flowchart TB
+    A["glibc-abilists<br/>tagged upstream ABI lists"] --> B["Exact release snapshot"]
+    P["glibc-provider-sources<br/>recorded source pack"] --> G["Host GCC and binutils<br/>verify recorded interfaces"]
+    Q["Pinned container build<br/>real glibc input tree"] --> E["Recorded library table<br/>or audited ELF evidence"]
+    P -->|recorded table| E
+    B --> J["Validate ABI / ELF join"]
+    E --> J
+    J --> D["Generate link-only<br/>glibc DSOs"]
+    D --> V["Prepared provider<br/>descriptor and input cache"]
+    G -->|CRT and nonshared objects| V
+    P -->|headers| V
+    Q -->|headers, CRT and nonshared| V
+    V --> F["C or Rust link<br/>explicit target inputs"]
+    F --> X["Built executable"]
+    X --> R["Execution uses real libraries<br/>never the link-only stubs"]
+```
+
+[Preparation](../src/provider/prepare.rs) also generates the link-only libgcc_s
+stub from the recorded GCC 4.8.5 table, selects host GCC startup objects and
+keys the cache by tool version/inputs. [Object verification](../src/provider/build.rs)
+refuses unreviewed differences. The container route retains real runtime
+libraries for tests; source mode's loader file is a link stub, never executed.
+See [provider details and limits](USING-PROVIDERS.md).
+
+Both diagrams show implemented paths only. Compact ABI database work remains
+[planned](ROADMAP.md#glibc-data-and-abi-metadata); authenticated prebuilt delivery
+is [deferred pending legal review](ROADMAP.md#provider-delivery). Tier 3 actual
+old-kernel/userland qualification remains [unavailable and deferred](ROADMAP.md#deferred-qualification),
+not an ordinary-release blocker. No arrow from linking, scanning or modern-host
+simulation establishes tier 3 compatibility.
+
+The existing trace covers these views: LAT-REQ-001–004, LAT-REQ-008–013,
+LAT-REQ-015–023 and LAT-REQ-027–028 in [REQUIREMENTS.md](REQUIREMENTS.md).
 
 `version.rs` parses numeric symbol versions independently of release policy.
 `glibc.rs` owns glibc file layouts, parser rules, release snapshots, and source
