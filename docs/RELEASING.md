@@ -1,7 +1,8 @@
 # Releasing
 
-See the [0.3.2 qualification record](RELEASE-CANDIDATE-0.3.2.md) for published
-checksums, exact source revisions and documentation status. The
+See the [0.3.3 release record](REVIEW-FIXES.md#published-033-archives-and-documentation)
+for current published checksums, source identity and documentation status.
+The [0.3.2 qualification record](RELEASE-CANDIDATE-0.3.2.md) remains historical. The
 [2026-10-31 plan](RELEASE-PLAN.md) retains the dependency analysis and release gates.
 
 The workspace publishes five crates to **crates.io only**, after
@@ -32,8 +33,8 @@ repositories. A dependency that is still a git revision (with a `version` too, a
 cannot verify `libc-abi-tools` until that version is on crates.io. Publish it first,
 then drop the `git`/`rev` keys and update `Cargo.lock`.
 
-The authorized [0.3.3 preparation](REVIEW-FIXES.md#authorized-033-release-preparation-2026-11-01)
-is tracked separately from publication.
+The [0.3.3 preparation and qualification](REVIEW-FIXES.md#authorized-033-release-preparation-2026-11-01)
+is preserved alongside the completed publication record.
 
 ## Release record
 
@@ -47,6 +48,7 @@ is tracked separately from publication.
 | 0.3.1 | 2026-10-13 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `3cd97929a99280fca2f616dae63bd610a038e131` (`v0.3.1`) |
 | 0.1.1 | 2026-10-14 | `glibc-abilists` | `d7e5228dae5b2591fc7849a9b82607a7d6bc25bb` (glibc-abilists `v0.1.1`) |
 | 0.3.2 | 2026-10-31 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `d404073e2329405e9e6f2dd1005fd8671e0d0f41` ([`v0.3.2`](https://github.com/rustcommons/linux-abi-tools/tree/v0.3.2)) |
+| 0.3.3 | 2026-11-01 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `d483fd5a58e1361d008f06db5989acef72a84e54` ([`v0.3.3`](https://github.com/rustcommons/linux-abi-tools/tree/v0.3.3)) |
 
 **0.2.0:** `libc-abi-tools` accepts provider descriptors for every glibc release in the
 pinned ABI lists, 2.17 through 2.44 (0.1.0 accepted 2.17, 2.18 and 2.22), exposes them as
@@ -74,6 +76,13 @@ hide scanner findings or later provider failures; genuine output errors still
 fail. Five-package lockstep release; upstream data/source inputs are unchanged.
 The [qualification record](RELEASE-CANDIDATE-0.3.2.md) links Linux/Windows/MSRV,
 package and scoped consumer checks and records published archive checksums.
+
+**0.3.3:** bounded ELF parsing with large fixed tables accepted, equivalent
+executable-alias coalescing and explicit site-budget errors; Docker/Podman
+explicit environment forwarding and redirected stdin. All five packages share
+the patch version. Upstream glibc inputs, API and MSRV remain unchanged. Parser
+resource limits, runner/provider limitations and deferred tier 3 coverage remain
+explicit in the [release record](REVIEW-FIXES.md#published-033-archives-and-documentation).
 
 **glibc-abilists 0.1.1:** documentation only. Every public item is documented,
 including when `release()` and `abilist()` return `None`; the README example runs as

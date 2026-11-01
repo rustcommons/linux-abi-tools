@@ -1,9 +1,13 @@
-# Unreleased parser and container I/O fixes
+# Parser and container I/O fixes: 0.3.3 release record
 
 Scope reviewed 2026-11-01 against published 0.3.2 (`d404073e2329405e9e6f2dd1005fd8671e0d0f41`).
 The reviewed source fixes did not change versions or dependency requirements.
-The authorized 0.3.3 preparation below updates package metadata only; upstream
-data, profiles and provider build inputs remain unchanged. Nothing is published yet.
+The five-package 0.3.3 release was published on 2026-11-01 at
+`d483fd5a58e1361d008f06db5989acef72a84e54`, tagged
+[`v0.3.3`](https://github.com/rustcommons/linux-abi-tools/tree/v0.3.3).
+Release preparation updated package metadata only; upstream data, profiles and
+provider build inputs remain unchanged. See the
+[published archive verification](#published-033-archives-and-documentation) below.
 
 ## Implemented scope
 
@@ -280,10 +284,11 @@ with any yank separately authorized.
 
 ## Authorized 0.3.3 release preparation (2026-11-01)
 
-Publication is authorized, with the coordinator as sole publisher using existing
-local Cargo credentials. This preparation does not publish, provision credentials,
-or create/move tags. All five 0.3.3 registry versions and v0.3.3 were absent at
-preparation start. Published 0.3.2 remains unchanged and lacks these fixes.
+Historical preparation record: the coordinator alone published using existing
+local Cargo credentials after independent approval and normal merge of PR #3.
+All five 0.3.3 registry versions and v0.3.3 were absent at preparation start.
+Publication and tagging are now complete, as recorded below. Published 0.3.2
+remains unchanged and lacks these fixes.
 
 ### Release notes
 
@@ -353,17 +358,68 @@ passed on the exact release candidate: Windows/Ubuntu workspace checks, MSRV,
 official Rust 1.90 Cargo/compiler ELF acceptance, local/container kernel profiles,
 and Docker/Podman environment/stdin/status checks. This is modern-host native
 x86_64 simulation, not tier 3 qualification. Independent release-preparation
-review approved candidate `dc36fb26` and evidence head `eca532e`. The final
-README/historical-plan documentation corrections await a narrow delta check
-before normal merge. No unchanged provider matrix was
-rerun. Source-patched consumer integration above remains applicable to unchanged
+review approved candidate `dc36fb26` and evidence head `eca532e`, then approved
+final README/historical-plan corrections at
+`bf61fe11e6697d9dd6937ad3cad0d7b7571ea0a8`. PR #3 merged normally at
+`d483fd5a58e1361d008f06db5989acef72a84e54`, whose tree is identical to that
+final reviewed head. All five packages were rebuilt and audited from the clean
+merged commit; no unchanged full Rust/native suite or provider matrix was rerun. Source-patched consumer integration above remains applicable to unchanged
 implementation; registry adoption and installs follow publication.
 
-The sole publisher must use the exact merged release commit and publish in order:
+The sole publisher used the exact merged release commit and published in order:
 linux-targets → kernel-abi-tools → linux-abi-scan → libc-abi-tools → linux-abi-tools.
-Verify each official archive checksum, clean VCS identity, index availability and
-non-yanked status before proceeding. Report ALL_FIVE_PUBLISHED before tagging the
-exact release commit; verify all five docs.rs builds after publication. Candidate
-archive hashes are preparation evidence, not substitutes for official downloads.
+Each official archive checksum, clean VCS identity, index availability and
+non-yanked status was verified before proceeding. The coordinator reported
+ALL_FIVE_PUBLISHED before the exact release commit was tagged. All five docs.rs
+builds were then verified. Candidate archive hashes above are historical
+preparation evidence; official published checksums follow.
 Downstream minima, registry-lock adoption and unpatched locked-install gates
 remain as specified above and are separate from producer source merge.
+
+## Published 0.3.3 archives and documentation
+
+Published on **2026-11-01**. Independent verification of the official crates.io
+API, sparse index and downloaded archives matched the coordinator's evidence
+and the clean merged-tree packages. Every archive identifies exact release
+commit `d483fd5a58e1361d008f06db5989acef72a84e54` with no dirty marker, and every
+version is non-yanked. Allowed files, normalized manifests, internal 0.3.3
+minima, source payloads, locks and license/notices passed audit. Upstream glibc
+requirements/resolutions/checksums remain at 0.1.0; no upstream release was needed.
+
+| Package | Files | Published archive SHA-256 |
+| --- | --- | --- |
+| [linux-targets 0.3.3](https://crates.io/api/v1/crates/linux-targets/0.3.3) | 8 | `9138ccb80a4467c37c805b9ed7bfab8a574bd749a52fe42c4e00921e24affcb1` |
+| [kernel-abi-tools 0.3.3](https://crates.io/api/v1/crates/kernel-abi-tools/0.3.3) | 15 | `0feddf7e5e33b15df1b279e3ba99c6a0743aae7edb91dd654e3a69ac01234dd3` |
+| [linux-abi-scan 0.3.3](https://crates.io/api/v1/crates/linux-abi-scan/0.3.3) | 11 | `eedffc57c88f27dee9bd28c3f177f39a457a694ddbe2678d9ba9e6078702028e` |
+| [libc-abi-tools 0.3.3](https://crates.io/api/v1/crates/libc-abi-tools/0.3.3) | 82 | `6a600e4bb78f84101a30c2658bd26a51ded0c6f79f73b74b99ad1168fa6b3bc7` |
+| [linux-abi-tools 0.3.3](https://crates.io/api/v1/crates/linux-abi-tools/0.3.3) | 7 | `82e7bc3bc7fe5bea39f215c6489b83833fd3aaa722b8d7840a15a103fc7ec2e0` |
+
+The annotated tag [`v0.3.3`](https://github.com/rustcommons/linux-abi-tools/tree/v0.3.3)
+points to the exact release commit above. No existing tag was moved and no
+GitHub binary assets were created. This subsequent evidence update does not
+change the immutable released tree or archives.
+
+All five docs.rs status endpoints reported `doc_status: true`, version `0.3.3`,
+on 2026-11-01. Each version-specific API page also loaded and displayed 0.3.3:
+
+- [linux-targets API](https://docs.rs/linux-targets/0.3.3/linux_targets/): [successful build](https://docs.rs/crate/linux-targets/0.3.3/status.json).
+- [kernel-abi-tools API](https://docs.rs/kernel-abi-tools/0.3.3/kernel_abi_tools/): [successful build](https://docs.rs/crate/kernel-abi-tools/0.3.3/status.json).
+- [linux-abi-scan API](https://docs.rs/linux-abi-scan/0.3.3/linux_abi_scan/): [successful build](https://docs.rs/crate/linux-abi-scan/0.3.3/status.json).
+- [libc-abi-tools API](https://docs.rs/libc-abi-tools/0.3.3/libc_abi_tools/): [successful build](https://docs.rs/crate/libc-abi-tools/0.3.3/status.json).
+- [linux-abi-tools API](https://docs.rs/linux-abi-tools/0.3.3/linux_abi_tools/): [successful build](https://docs.rs/crate/linux-abi-tools/0.3.3/status.json).
+
+### Released scope and remaining limits
+
+0.3.3 ships F1/F3 parser hardening with R1 large-table acceptance and R2 alias/site
+budget handling, plus F4/F5 container environment/stdin fixes. The detailed
+resource limits and remaining SELinux, ownership, foreign-ABI, signal and cache
+concurrency limitations above still apply. Version-keyed provider caches can
+require fresh preparation after upgrading. No new real-old-system compatibility
+claim is made: tier 3 remains unavailable and deferred, not completed. Existing
+provider legal/provenance/pack/replay gates remain unchanged.
+
+Producer publication, archive verification, tagging and docs.rs verification are
+complete. Source-patched consumer integration passed as recorded above; real
+registry adoption, raised scanner/kernel minima and unpatched locked installs
+are separate downstream gates and are not claimed complete here. Published
+0.3.2 remains immutable and lacks these fixes.

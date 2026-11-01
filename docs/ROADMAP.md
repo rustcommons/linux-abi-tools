@@ -180,5 +180,6 @@ launched process has no numeric exit code; normal engine/program numeric status
 is preserved. This loses the signal number but remains a failure. Changing to
 `128 + signal` is a possible contract change, not part of the scoped fixes.
 
-See [review fix scope and validation](REVIEW-FIXES.md) for the unreleased parser
-and container I/O work. Published 0.3.2 remains immutable.
+The parser and container I/O fixes shipped in **0.3.3 on 2026-11-01**; see the
+[release record](REVIEW-FIXES.md#published-033-archives-and-documentation).
+The follow-ups above remain open. Published 0.3.2 remains immutable and unfixed.

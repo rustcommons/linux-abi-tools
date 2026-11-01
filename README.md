@@ -91,5 +91,5 @@ Zig's libc ABI tools. See [NOTICE.md](https://github.com/rustcommons/linux-abi-t
 No Zig installation is required.
 
 See the [roadmap](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/ROADMAP.md) for open work and the
-[0.3.3 preparation and qualification](https://github.com/rustcommons/linux-abi-tools/blob/eca532e252edf6d1f9ad18015b0d1b344417c8c8/docs/REVIEW-FIXES.md#authorized-033-release-preparation-2026-11-01) for the current candidate and validation evidence.
+[0.3.3 release record](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/REVIEW-FIXES.md#published-033-archives-and-documentation) for published versions, checksums and validation evidence.
 The crates are published to crates.io.
