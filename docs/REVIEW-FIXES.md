@@ -303,11 +303,50 @@ and unavailable, with no new real-old-system compatibility claim.
 
 Five manifests, seven internal minima and five workspace lock entries move to
 0.3.3. Both upstream glibc requirements/resolutions/checksums remain at 0.1.0.
-Required candidate fmt/MSRV/clippy/tests/docs/package validation and all-five
-archive contents/VCS/license audits are pending. Native focused hosted validation
-will identify the exact candidate SHA. Independent release-preparation review is
-required before normal merge. Reviewed implementation remains 6604ceea; candidate
-changes are metadata and this record only.
+Exact release candidate: `dc36fb26aaf06b3740322bc805b67d8b7ebfdfe5`,
+[PR #3](https://github.com/rustcommons/linux-abi-tools/pull/3).
+Reviewed implementation remains `6604ceea`; a checked diff against approved merge
+`c24ed06a` confirms only the five manifests, lockfile and two release documents
+changed. Later evidence-only documentation commits do not replace this identity.
+
+Local ARM64 validation passed with fresh `target/release-033`, two build/test
+workers, Cargo/Rust 1.99 and Rust 1.90 for MSRV:
+
+- `cargo +1.99.0 fmt --all -- --check`.
+- `cargo +1.90.0 check --workspace --all-targets --locked --offline`.
+- Workspace all-target Clippy and root no-default-features all-target Clippy,
+  both locked/offline with `-D warnings`.
+- Workspace all-target tests (113 passed; external toolchain test opt-in),
+  workspace doctests (6 passed), root no-default all-target tests (43 passed).
+- All-feature workspace docs with `--no-deps` and `RUSTDOCFLAGS='-D warnings'`.
+- `cargo +1.99.0 package --workspace --locked`: all five packaged sources
+  verified using Cargo's temporary registry for unpublished internal versions.
+  No publication workaround or dependency update was used.
+
+All five archive audits passed: allowed file lists, byte-for-byte included source,
+normalized manifests/internal minima, generated locks, clean candidate VCS SHA
+and repository-relative paths, MIT/license/notice files, libgcc table, provider
+scripts/input manifests, and unchanged upstream 0.1.0 requirements/checksums.
+No credentials, build output, review docs, instruction files or integration-test directories are packaged.
+
+Candidate archive SHA-256 values (not published checksums):
+
+| Package | Files | SHA-256 |
+| --- | --- | --- |
+| linux-targets | 8 | `ee09d7ba465dfe103766265127694234d6376a810c9f7c6fa3f66d12cfe15288` |
+| kernel-abi-tools | 15 | `64e176f3db8383c2781f119da3d9512c4ad899808bf366669b63acf7eb1a50a1` |
+| linux-abi-scan | 11 | `8745c94d1b4f5e67a5251f7349abf166bf4f5bd740a2352b9464489535cc2a47` |
+| libc-abi-tools | 82 | `ef8289d3d808347b2d02059fe6238f800e3ba2257836d3820e3c7b18bb7714dc` |
+| linux-abi-tools | 7 | `3b343ed97f16bd4037fe36d864ad31d509dd0d97f52a608b718184bd3454d348` |
+
+[Focused native run 41268289801](https://github.com/rustcommons/linux-abi-tools/actions/runs/41268289801)
+passed on the exact release candidate: Windows/Ubuntu workspace checks, MSRV,
+official Rust 1.90 Cargo/compiler ELF acceptance, local/container kernel profiles,
+and Docker/Podman environment/stdin/status checks. This is modern-host native
+x86_64 simulation, not tier 3 qualification. Independent release-preparation
+review remains pending before normal merge. No unchanged provider matrix was
+rerun. Source-patched consumer integration above remains applicable to unchanged
+implementation; registry adoption and installs follow publication.
 
 The sole publisher must use the exact merged release commit and publish in order:
 linux-targets → kernel-abi-tools → linux-abi-scan → libc-abi-tools → linux-abi-tools.
