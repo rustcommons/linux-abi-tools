@@ -10,11 +10,6 @@ The kernel crate has its own [roadmap](../crates/kernel-abi-tools/docs/ROADMAP.m
 
 ## Next
 
-- [ ] **Tier 3 on real old systems.** Run representative programs on a real glibc 2.17
-  distribution (CentOS 7, Linux 3.10) and on SLES 12 SP5 (glibc 2.22, Linux 4.12):
-  threads/TLS, unwinding, C FFI, native C dependencies and rejected newer symbols.
-  Every provider is so far tested on real glibc runtimes on a modern kernel and under
-  the kernel simulation only. Waits on the maintainer providing or approving the hosts.
 - [ ] **Legal review** (maintainer), covering:
   - the corresponding-source arrangement for `prebuilt` (the binaries crate depends on
     `glibc-provider-sources`);
@@ -26,6 +21,26 @@ The kernel crate has its own [roadmap](../crates/kernel-abi-tools/docs/ROADMAP.m
 Version [0.3.2](RELEASE-CANDIDATE-0.3.2.md) ships stdout broken-pipe fixes for
 all three workspace CLIs, including shared provider CLI output. These fixes are
 complete; real old-target qualification and the unrelated work below remain open.
+
+## Deferred qualification
+
+Real old-system (tier 3) environments and user-provided testing are currently
+unavailable. Tier 3 is deferred qualification and infrastructure work, not a
+blocker for ordinary releases with passing applicable automated gates and an
+explicit documented tier 3 coverage gap. Any new real-old-system compatibility
+claim still requires evidence from the actual target kernel and userland.
+
+Current automated coverage includes real glibc runtimes on modern kernels and
+seccomp simulation. Containers on a modern host share its kernel; neither they
+nor simulation replace tier 3. See [release qualification scope](RELEASING.md#qualification-scope-for-releases).
+
+- [ ] When suitable infrastructure becomes available, qualify representative
+  programs on a real glibc 2.17 distribution (CentOS 7, Linux 3.10) and SLES 12 SP5
+  (glibc 2.22, Linux 4.12): threads/TLS, unwinding, C FFI, native C dependencies
+  and rejected newer symbols. This work is not completed or assigned to the user.
+- [ ] Investigate whether a reproducible full-VM approach running the actual old
+  kernel and userland is feasible. No VM platform is implemented or selected;
+  no hardware, funding or delivery commitment is assumed.
 
 ## Provider delivery
 

@@ -117,8 +117,12 @@ and is not part of the crate (`kernel-seccomp generate DIR` recreates it).
   stricter than the real vendor kernel, never looser.
 - **Kernels before 3.3:** the data floor is v3.3. Rust std's documented
   minimum, 3.2, is treated as 3.3.
-- **Final qualification:** run on a real VM of the target release before you
-  ship.
+- **Real old-system claims:** qualification requires the actual target kernel
+  and userland; simulation and containers on a modern host are not equivalent.
+  That infrastructure/testing is currently unavailable and
+  [deferred](ROADMAP.md#deferred-qualification). Ordinary tool releases can ship
+  with passing applicable automated gates and the explicit tier 3 gap; see
+  [release qualification scope](RELEASING.md#qualification-scope-for-releases).
 
 
 ## Probe and maintainer self-tests

@@ -33,7 +33,7 @@ described in the linked section; **planned** and **long-term** rows are designs.
 | Use the libraries directly | Developers | Implemented | [5](#5-use-the-libraries-directly) |
 | Obtain a provider automatically (`source`, `container`) | Users | Implemented; `prebuilt` remains planned | [Using providers](USING-PROVIDERS.md) |
 | Distribution-specific providers | Maintainers and users | Planned, later release | [10.2](#102-distribution-specific-providers) |
-| Qualify on a real target host (tier 3) | Users | Outside these tools; required for any compatibility claim | [Testing tiers](#testing-tiers) |
+| Qualify on a real target host (tier 3) | Qualification infrastructure | Deferred: environments/testing unavailable; required for new real-old-system compatibility claims | [Deferred qualification](ROADMAP.md#deferred-qualification) |
 
 Maintainer workflows: [collection, qualification, reference generation and releases](MAINTAINING.md).
 
@@ -46,6 +46,10 @@ Checks get more reliable, and more expensive, from tier to tier:
 | 1. Inspect | Read the built ELF files; nothing runs | Exact for symbols, versions, ELF notes; heuristic for syscalls in code | `linux-abi-scan`, `cargo libc inspect` |
 | 2. Simulate | Run the tests under a seccomp filter (host userland) or in a container (target userland) | Catches what executes; syscall availability and `madvise` only | `kernel-seccomp run`, `cargo libc test`/`run` |
 | 3. Qualify | Run on a real host at the target's minimums, e.g. a SLES 12 SP5 VM | The only qualification | Your target environment |
+
+Ordinary releases can proceed with passing applicable automated gates and an
+explicit tier 3 coverage gap; see [release qualification scope](RELEASING.md#qualification-scope-for-releases).
+This does not qualify a new real-old-system compatibility claim.
 
 Tier 1 is documented as the least reliable: it reports what a file *could*
 do. Tiers 1 and 2 use the same kernel data, so they cannot disagree about

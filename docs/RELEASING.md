@@ -81,6 +81,29 @@ crates.io limits how many new crate names one account can publish in a short
 period; a first release of several crates may need a pause (the sixth crate
 here waited a few minutes).
 
+## Qualification scope for releases
+
+Ordinary bugfix and documentation releases may ship when their applicable
+automated gates pass and the release record explicitly states the tier 3 coverage
+gap. Real old-system environments and user-provided testing are currently
+unavailable; [tier 3 work is deferred](ROADMAP.md#deferred-qualification), not
+marked completed or made a prerequisite for every ordinary release.
+
+Any new real-old-system compatibility claim still requires actual evidence on
+the claimed target kernel and userland. Static inspection, seccomp simulation,
+and containers on a modern host do not provide that evidence. Report the exact
+scope of successful automated checks without extending it to untested systems.
+
+All applicable provider, data, pack/replay, provenance/license, package, MSRV and
+consumer integration gates remain in force. This distinction does not relax the
+legal review or prebuilt-provider gates, and publication still requires explicit
+authorization. Preserve dated qualification evidence as historical records.
+
+This policy applies to the five linux-abi-tools workspace packages. For
+cargo-libc releases, follow its maintained
+[release documentation](https://github.com/rustcommons/cargo-libc/tree/main/docs)
+rather than duplicating its policy here.
+
 ## Cutting a release
 
 1. Set the same `version` in the five manifests and in the internal

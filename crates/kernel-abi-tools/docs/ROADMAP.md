@@ -31,5 +31,9 @@ the data floor is 3.3). The presets are in
 
 - [ ] Publisher authentication beyond crates.io checksums (for example an
   internal mirror trust chain).
-- [ ] Release the `kernel-seccomp` broken-pipe fix (see the workspace
-  [roadmap](../../../docs/ROADMAP.md#next)).
+
+The `kernel-seccomp` broken-pipe fix shipped in workspace **0.3.2 on 2026-10-31**;
+see the [release record](../../../docs/RELEASING.md#release-record). It is no longer
+open release work. Real old-system qualification is
+[deferred](../../../docs/ROADMAP.md#deferred-qualification), with the coverage gap
+kept explicit; no current test capacity is assumed.
