@@ -292,12 +292,20 @@ pub fn scan_file(path: &Path, target: &ScanTarget) -> Result<Report, String> {
 /// # Errors
 ///
 /// The bytes are not an x86_64 ELF64 little-endian file, have no section
-/// headers, or are malformed (see [`elf::Elf::parse`]).
+/// headers, or are malformed (see [`elf::Elf::parse`]). Code scanning also
+/// rejects more than one site per two input bytes, or 1,048,576 sites in total,
+/// before constructing per-site findings. Aliased mappings can exhaust this
+/// resource budget even when their ELF structure is otherwise valid; no partial
+/// report is returned.
 pub fn scan(bytes: &[u8], target: &ScanTarget) -> Result<Report, String> {
     let elf = elf::Elf::parse(bytes)?;
     let mut findings = Vec::new();
     glibc_checks(&elf, target, &mut findings);
-    kernel_checks(&elf, target, &mut findings);
+    // Each recognized instruction occupies at least two bytes. Separate
+    // mappings can still exceed this physical-input budget; fail explicitly
+    // rather than discard address-specific evidence or allocate a huge report.
+    let max_sites = (bytes.len() / 2).min(1_048_576);
+    kernel_checks(&elf, target, &mut findings, max_sites)?;
     findings.sort_by(|a, b| {
         (a.severity, a.confidence, a.check, a.address, &a.subject).cmp(&(
             b.severity,
@@ -385,13 +393,18 @@ fn glibc_checks(elf: &elf::Elf, target: &ScanTarget, out: &mut Vec<Finding>) {
     }
 }
 
-fn kernel_checks(elf: &elf::Elf, target: &ScanTarget, out: &mut Vec<Finding>) {
+fn kernel_checks(
+    elf: &elf::Elf,
+    target: &ScanTarget,
+    out: &mut Vec<Finding>,
+    max_sites: usize,
+) -> Result<(), String> {
     let Some(kernel) = &target.kernel else {
         out.push(scope(
             "kernel",
             "no kernel floor selected; kernel checks skipped (host kernel, not simulated)",
         ));
-        return;
+        return Ok(());
     };
     let all = syscalls();
     let by_name: BTreeMap<&str, &kernel_abi_tools::Syscall> =
@@ -485,7 +498,7 @@ fn kernel_checks(elf: &elf::Elf, target: &ScanTarget, out: &mut Vec<Finding>) {
     }
 
     // Machine code: calls to syscall()/madvise() and raw syscall instructions.
-    let sites = code_sites(elf);
+    let sites = code_sites(elf, max_sites)?;
     let mut unresolved = [0usize; 3];
     for site in &sites {
         match site.kind {
@@ -571,6 +584,7 @@ fn kernel_checks(elf: &elf::Elf, target: &ScanTarget, out: &mut Vec<Finding>) {
             ));
         }
     }
+    Ok(())
 }
 
 fn scope(subject: &str, detail: &str) -> Finding {
@@ -645,7 +659,7 @@ fn last_constant(window: &[u8], mov_op: u8, modrm: u8) -> Option<u64> {
 
 /// Every call to `syscall`/`madvise` through the GOT or a PLT stub, and every
 /// raw `syscall` instruction, with the constant argument when one is found.
-fn code_sites(elf: &elf::Elf) -> Vec<Site> {
+fn code_sites(elf: &elf::Elf, max_sites: usize) -> Result<Vec<Site>, String> {
     let slots_of = |name: &str| -> BTreeSet<u64> {
         elf.imports
             .iter()
@@ -663,7 +677,13 @@ fn code_sites(elf: &elf::Elf) -> Vec<Site> {
         for i in 0..b.len() {
             if b[i..].starts_with(&[0xff, 0x25]) {
                 if let Some(rel) = rel32(b, i + 2) {
-                    let slot = (c.addr as i64 + i as i64 + 6 + rel) as u64;
+                    let Some(slot) = c
+                        .addr
+                        .checked_add(i as u64 + 6)
+                        .and_then(|a| a.checked_add_signed(rel))
+                    else {
+                        continue; // no representable target for this heuristic match
+                    };
                     let mut start = i;
                     if start >= 1 && b[start - 1] == 0xf2 {
                         start -= 1; // bnd
@@ -671,7 +691,11 @@ fn code_sites(elf: &elf::Elf) -> Vec<Site> {
                     if start >= 4 && b[start - 4..start] == [0xf3, 0x0f, 0x1e, 0xfa] {
                         start -= 4; // endbr64
                     }
-                    stubs.insert(c.addr + start as u64, slot);
+                    let address = c.addr + start as u64;
+                    if stubs.len() == max_sites && !stubs.contains_key(&address) {
+                        return Err("PLT site count exceeds scan resource budget".into());
+                    }
+                    stubs.insert(address, slot);
                 }
             }
         }
@@ -685,9 +709,11 @@ fn code_sites(elf: &elf::Elf) -> Vec<Site> {
             let here = c.addr + i as u64;
             let slot = match (b[i], b[i + 1]) {
                 (0xe8 | 0xe9, _) => rel32(b, i + 1)
-                    .map(|rel| (here as i64 + 5 + rel) as u64)
+                    .and_then(|rel| here.checked_add(5)?.checked_add_signed(rel))
                     .and_then(|t| stubs.get(&t).copied()),
-                (0xff, 0x15 | 0x25) => rel32(b, i + 2).map(|rel| (here as i64 + 6 + rel) as u64),
+                (0xff, 0x15 | 0x25) => {
+                    rel32(b, i + 2).and_then(|rel| here.checked_add(6)?.checked_add_signed(rel))
+                }
                 _ => None,
             };
             let window = &b[i.saturating_sub(LOOKBACK)..i];
@@ -709,7 +735,11 @@ fn code_sites(elf: &elf::Elf) -> Vec<Site> {
                 _ => None,
             };
             if let Some((kind, constant)) = kind {
-                if seen.insert(here) {
+                if !seen.contains(&here) {
+                    if sites.len() == max_sites {
+                        return Err("code site count exceeds scan resource budget".into());
+                    }
+                    seen.insert(here);
                     sites.push(Site {
                         kind,
                         address: here,
@@ -719,7 +749,7 @@ fn code_sites(elf: &elf::Elf) -> Vec<Site> {
             }
         }
     }
-    sites
+    Ok(sites)
 }
 
 #[cfg(test)]

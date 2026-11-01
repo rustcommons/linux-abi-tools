@@ -556,3 +556,259 @@ fn scans_a_real_rust_binary() {
         r.to_text(true)
     );
 }
+
+fn section_header(file: &[u8], index: usize) -> usize {
+    u64::from_le_bytes(file[40..48].try_into().unwrap()) as usize + index * 64
+}
+
+fn replace_section(file: &mut Vec<u8>, index: usize, data: &[u8]) {
+    let h = section_header(file, index);
+    let offset = file.len() as u64;
+    file[h + 24..h + 32].copy_from_slice(&offset.to_le_bytes());
+    file[h + 32..h + 40].copy_from_slice(&(data.len() as u64).to_le_bytes());
+    file.extend_from_slice(data);
+}
+
+#[test]
+fn rejects_version_string_amplification() {
+    // Only 8 KiB of strings and 64 records; the old parser clones the same
+    // library/version into both output structures for every record (>2 MiB).
+    let mut file = build(&Spec::default());
+    let mut strings = vec![b'x'; 8192];
+    strings.push(0);
+    replace_section(&mut file, 3, &strings);
+    let mut records = vec![0u8; 16 + 64 * 16];
+    records[0..2].copy_from_slice(&1u16.to_le_bytes());
+    records[2..4].copy_from_slice(&64u16.to_le_bytes());
+    records[8..12].copy_from_slice(&16u32.to_le_bytes());
+    for k in 0..64 {
+        let a = 16 + k * 16;
+        records[a + 6..a + 8].copy_from_slice(&(2 + k as u16).to_le_bytes());
+        if k != 63 {
+            records[a + 12..a + 16].copy_from_slice(&16u32.to_le_bytes());
+        }
+    }
+    replace_section(&mut file, 6, &records);
+    assert!(elf::Elf::parse(&file).is_err());
+}
+
+#[test]
+fn rejects_version_aux_outside_section_and_count_mismatch() {
+    let valid = build(&Spec {
+        imports: vec![imp("puts", Some("GLIBC_2.17"), false, None)],
+        ..Spec::default()
+    });
+    assert!(elf::Elf::parse(&valid).is_ok());
+    let mut file = valid.clone();
+    let h = section_header(&file, 6);
+    file[h + 32..h + 40].copy_from_slice(&16u64.to_le_bytes());
+    assert!(elf::Elf::parse(&file).is_err(), "aux outside section");
+    let mut file = valid;
+    let off = u64::from_le_bytes(file[h + 24..h + 32].try_into().unwrap()) as usize;
+    file[off + 2..off + 4].copy_from_slice(&2u16.to_le_bytes());
+    assert!(
+        elf::Elf::parse(&file).is_err(),
+        "count exceeds terminated chain"
+    );
+}
+
+#[test]
+fn rejects_overflowing_note_range_without_panicking() {
+    let mut file = build(&Spec::default());
+    let ph = u64::from_le_bytes(file[32..40].try_into().unwrap()) as usize;
+    file[ph + 8..ph + 16].copy_from_slice(&u64::MAX.to_le_bytes());
+    file[ph + 32..ph + 40].copy_from_slice(&32u64.to_le_bytes());
+    assert!(elf::Elf::parse(&file).is_err());
+}
+
+#[test]
+fn rejects_reused_and_overlapping_version_records() {
+    // Two headers share one auxiliary, wholly inside the section.
+    let mut file = build(&Spec::default());
+    replace_section(&mut file, 3, b"\0libc.so.6\0GLIBC_2.17\0");
+    let mut records = vec![0u8; 48];
+    for h in [0, 16] {
+        records[h..h + 2].copy_from_slice(&1u16.to_le_bytes());
+        records[h + 2..h + 4].copy_from_slice(&1u16.to_le_bytes());
+        records[h + 4..h + 8].copy_from_slice(&1u32.to_le_bytes());
+        records[h + 8..h + 12].copy_from_slice(&(32u32 - h as u32).to_le_bytes());
+    }
+    records[12..16].copy_from_slice(&16u32.to_le_bytes());
+    records[38..40].copy_from_slice(&2u16.to_le_bytes());
+    records[40..44].copy_from_slice(&11u32.to_le_bytes());
+    replace_section(&mut file, 6, &records);
+    assert!(elf::Elf::parse(&file).unwrap_err().contains("overlapping"));
+    // Progress into the middle of the previous header is also rejected.
+    records[12..16].copy_from_slice(&8u32.to_le_bytes());
+    replace_section(&mut file, 6, &records);
+    assert!(elf::Elf::parse(&file).unwrap_err().contains("progress"));
+}
+
+#[test]
+fn accepts_large_file_backed_fixed_tables() {
+    let mut file = build(&Spec::default());
+    // Valid R_X86_64_NONE relocations and null dynamic symbols need no heap
+    // expansion. Their complete fixed-size tables fit in this bounded input.
+    replace_section(&mut file, 7, &vec![0u8; 150_000 * 24]);
+    replace_section(&mut file, 4, &vec![0u8; 70_000 * 24]);
+    replace_section(&mut file, 5, &vec![0u8; 70_000 * 2]);
+    assert!(elf::Elf::parse(&file).is_ok());
+}
+
+#[test]
+fn rejects_overflowing_headers_strings_and_code_and_short_tables() {
+    let valid = build(&Spec {
+        imports: vec![imp("puts", Some("GLIBC_2.17"), false, None)],
+        text: vec![0xe8, 0, 0, 0, 0],
+        ..Spec::default()
+    });
+    for field in [
+        32,
+        40,
+        section_header(&valid, 3) + 24,
+        section_header(&valid, 1) + 16,
+    ] {
+        let mut file = valid.clone();
+        file[field..field + 8].copy_from_slice(&u64::MAX.to_le_bytes());
+        assert!(elf::Elf::parse(&file).is_err(), "field {field}");
+    }
+    let mut file = valid.clone();
+    let h = section_header(&file, 5);
+    file[h + 32..h + 40].copy_from_slice(&2u64.to_le_bytes());
+    assert!(elf::Elf::parse(&file).unwrap_err().contains("short symbol"));
+    // Cross the signed-address boundary with a representable u64 code range.
+    let mut file = valid;
+    let h = section_header(&file, 1);
+    file[h + 16..h + 24].copy_from_slice(&(i64::MAX as u64 - 2).to_le_bytes());
+    let selection = linux_targets::Selection::resolve(&linux_targets::Request {
+        glibc: Some("2.17"),
+        ..Default::default()
+    })
+    .unwrap();
+    assert!(scan(&file, &ScanTarget::from_selection(&selection)).is_ok());
+}
+
+#[test]
+fn rejects_note_payload_outside_segment() {
+    let mut file = build(&Spec {
+        abi_tag: Some([3, 10, 0]),
+        ..Spec::default()
+    });
+    let ph = u64::from_le_bytes(file[32..40].try_into().unwrap()) as usize;
+    file[ph + 32..ph + 40].copy_from_slice(&16u64.to_le_bytes());
+    assert!(elf::Elf::parse(&file).unwrap_err().contains("descriptor"));
+}
+
+#[test]
+fn parses_version_chains_beyond_old_silent_truncation_limit() {
+    let mut file = build(&Spec::default());
+    replace_section(&mut file, 3, b"\0libc.so.6\0GLIBC_2.17\0");
+    let mut records = vec![0u8; 4097 * 32];
+    for k in 0..4097 {
+        let h = k * 32;
+        records[h..h + 2].copy_from_slice(&1u16.to_le_bytes());
+        records[h + 2..h + 4].copy_from_slice(&1u16.to_le_bytes());
+        records[h + 4..h + 8].copy_from_slice(&1u32.to_le_bytes());
+        records[h + 8..h + 12].copy_from_slice(&16u32.to_le_bytes());
+        if k != 4096 {
+            records[h + 12..h + 16].copy_from_slice(&32u32.to_le_bytes());
+        }
+        records[h + 22..h + 24].copy_from_slice(&2u16.to_le_bytes());
+        records[h + 24..h + 28].copy_from_slice(&11u32.to_le_bytes());
+    }
+    replace_section(&mut file, 6, &records);
+    assert_eq!(elf::Elf::parse(&file).unwrap().needs.len(), 4097);
+}
+
+fn append_code_alias(file: &mut Vec<u8>, source_index: usize, addr: u64) {
+    let h = section_header(file, source_index);
+    let mut header = file[h..h + 64].to_vec();
+    header[16..24].copy_from_slice(&addr.to_le_bytes());
+    // build() places the section table at EOF.
+    file.extend_from_slice(&header);
+    let count = u16::from_le_bytes(file[60..62].try_into().unwrap());
+    file[60..62].copy_from_slice(&(count + 1).to_le_bytes());
+}
+
+fn kernel_target() -> ScanTarget {
+    let selection = linux_targets::Selection::resolve(&linux_targets::Request {
+        kernel: Some("3.10"),
+        ..Default::default()
+    })
+    .unwrap();
+    ScanTarget::from_selection(&selection)
+}
+
+#[test]
+fn equivalent_code_aliases_coalesce_but_distinct_addresses_remain() {
+    let mut file = build(&Spec {
+        text: vec![0xb8, 1, 0, 0, 0, 0x0f, 0x05],
+        ..Spec::default()
+    });
+    append_code_alias(&mut file, 1, TEXT);
+    assert_eq!(elf::Elf::parse(&file).unwrap().code.len(), 1);
+    append_code_alias(&mut file, 1, TEXT + 4096);
+    let elf = elf::Elf::parse(&file).unwrap();
+    assert_eq!(elf.code.len(), 2);
+    let report = scan(&file, &kernel_target()).unwrap();
+    let addresses: Vec<_> = report
+        .findings
+        .iter()
+        .filter(|f| f.check == "syscall-insn")
+        .map(|f| f.address.unwrap())
+        .collect();
+    assert_eq!(addresses, [TEXT + 5, TEXT + 4096 + 5]);
+}
+
+#[test]
+fn aliased_code_cannot_expand_into_unbounded_findings() {
+    let mut file = build(&Spec::default());
+    // Keep fixtures small. Relocate a dense code range ahead of a fresh
+    // section table, so appended alias headers remain a contiguous table.
+    let old_sh = section_header(&file, 0);
+    let headers = file[old_sh..].to_vec();
+    file.truncate(old_sh);
+    let code_offset = file.len() as u64;
+    file.extend_from_slice(&[0xb8, 1, 0, 0, 0, 0x0f, 0x05].repeat(8192));
+    let new_sh = file.len() as u64;
+    file.extend_from_slice(&headers);
+    file[40..48].copy_from_slice(&new_sh.to_le_bytes());
+    let h = section_header(&file, 1);
+    file[h + 24..h + 32].copy_from_slice(&code_offset.to_le_bytes());
+    file[h + 32..h + 40].copy_from_slice(&(8192u64 * 7).to_le_bytes());
+    assert!(
+        scan(&file, &kernel_target()).is_ok(),
+        "a dense non-aliased section is valid"
+    );
+    for k in 1..8 {
+        append_code_alias(&mut file, 1, TEXT + k * 65536);
+    }
+    assert!(
+        elf::Elf::parse(&file).is_ok(),
+        "distinct mappings remain represented"
+    );
+    assert!(scan(&file, &kernel_target())
+        .unwrap_err()
+        .contains("code site count"));
+}
+
+#[test]
+fn version_chain_limit_remains_independent_of_fixed_tables() {
+    let mut file = build(&Spec::default());
+    replace_section(&mut file, 3, b"\0");
+    let count = 32_769;
+    let mut records = vec![0u8; count * 32];
+    for k in 0..count {
+        let h = k * 32;
+        records[h..h + 2].copy_from_slice(&1u16.to_le_bytes());
+        records[h + 2..h + 4].copy_from_slice(&1u16.to_le_bytes());
+        records[h + 8..h + 12].copy_from_slice(&16u32.to_le_bytes());
+        if k + 1 < count {
+            records[h + 12..h + 16].copy_from_slice(&32u32.to_le_bytes());
+        }
+    }
+    replace_section(&mut file, 6, &records);
+    assert!(elf::Elf::parse(&file)
+        .unwrap_err()
+        .contains("version record limit"));
+}

@@ -152,3 +152,20 @@ fn genuine_stdout_failure_remains_an_error() {
     assert_eq!(out.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&out.stderr).contains("cannot write to stdout"));
 }
+
+#[test]
+fn malformed_note_returns_cli_error_instead_of_panicking() {
+    let file = Fixture::new(true);
+    let mut bytes = fs::read(&file.0).unwrap();
+    bytes[64] = 4; // PT_NOTE
+    bytes[96..104].copy_from_slice(&u64::MAX.to_le_bytes());
+    fs::write(&file.0, bytes).unwrap();
+    let out = Command::new(BIN)
+        .arg(&file.0)
+        .args(["--kernel", "3.10"])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&out.stderr).starts_with("linux-abi-scan:"));
+    assert!(!String::from_utf8_lossy(&out.stderr).contains("panicked"));
+}

@@ -1,7 +1,10 @@
 //! Classic-BPF seccomp filters built directly from the data, for the local
 //! runner: no container, no libseccomp, and no root.
 //!
-//! The program makes the same decisions as [`crate::seccomp_profile`]:
+//! For native x86_64 syscalls the program follows the same data as
+//! [`crate::seccomp_profile`]. Foreign-ABI rejection is specific to this local
+//! filter; OCI runtimes control their own bad-architecture action, so i386/x32
+//! errno/status parity is not guaranteed:
 //!
 //! 1. Any architecture other than x86_64 (e.g. `int 0x80` i386 calls) and any
 //!    x32 syscall number returns `ENOSYS`.

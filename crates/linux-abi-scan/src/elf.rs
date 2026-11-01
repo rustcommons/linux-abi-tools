@@ -74,14 +74,45 @@ pub struct Elf<'a> {
     pub relr: bool,
 }
 
-struct Reader<'a>(&'a [u8]);
+// Bound aggregate work and owned strings even when many records alias the
+// same input bytes. Charge before allocating, including lossy UTF-8 expansion.
+const MAX_VERSION_RECORDS: usize = 65_536;
+
+struct Reader<'a> {
+    bytes: &'a [u8],
+    remaining_bytes: std::cell::Cell<usize>,
+    remaining_version_records: std::cell::Cell<usize>,
+}
 
 impl<'a> Reader<'a> {
+    fn charge(&self, bytes: usize) -> Result<(), String> {
+        let remaining = self
+            .remaining_bytes
+            .get()
+            .checked_sub(bytes)
+            .ok_or("ELF aggregate parsing budget exceeded")?;
+        self.remaining_bytes.set(remaining);
+        Ok(())
+    }
+    fn version_record_count(&self, count: u64) -> Result<(), String> {
+        let count = usize::try_from(count).map_err(|_| "version record count out of range")?;
+        let remaining = self
+            .remaining_version_records
+            .get()
+            .checked_sub(count)
+            .ok_or("ELF version record limit exceeded")?;
+        self.remaining_version_records.set(remaining);
+        Ok(())
+    }
+    fn copy_string(&self, s: &str) -> Result<String, String> {
+        self.charge(s.len())?;
+        Ok(s.to_owned())
+    }
     fn slice(&self, off: u64, len: u64) -> Result<&'a [u8], String> {
         let start = usize::try_from(off).map_err(|_| "offset out of range")?;
         let len = usize::try_from(len).map_err(|_| "length out of range")?;
         let end = start.checked_add(len).ok_or("range overflows")?;
-        self.0
+        self.bytes
             .get(start..end)
             .ok_or_else(|| format!("range {start:#x}..{end:#x} is outside the file"))
     }
@@ -101,11 +132,18 @@ impl<'a> Reader<'a> {
         if off >= table.size {
             return Err("string offset outside its table".into());
         }
-        let bytes = self.slice(table.offset + off, table.size - off)?;
+        let bytes = self.slice(
+            table
+                .offset
+                .checked_add(off)
+                .ok_or("string offset overflows")?,
+            table.size - off,
+        )?;
         let end = bytes
             .iter()
             .position(|&b| b == 0)
             .ok_or("unterminated string")?;
+        self.charge(end.checked_mul(3).ok_or("string length overflows")?)?;
         Ok(String::from_utf8_lossy(&bytes[..end]).into_owned())
     }
 }
@@ -130,12 +168,18 @@ impl<'a> Elf<'a> {
     ///
     /// The input is larger than [`MAX_BYTES`], is not an ELF64 little-endian
     /// x86_64 file, has no section headers, or has a malformed or out-of-range
-    /// structure.
+    /// structure. Parsing also rejects more than 65,536 version-chain records or
+    /// aggregate work/string copies exceeding eight times the input size
+    /// (capped at 512 MiB), including repeated references to the same bytes.
     pub fn parse(bytes: &'a [u8]) -> Result<Self, String> {
         if bytes.len() > MAX_BYTES {
             return Err("file exceeds the 512 MiB scan limit".into());
         }
-        let r = Reader(bytes);
+        let r = Reader {
+            bytes,
+            remaining_bytes: std::cell::Cell::new(bytes.len().saturating_mul(8).min(MAX_BYTES)),
+            remaining_version_records: std::cell::Cell::new(MAX_VERSION_RECORDS),
+        };
         if r.slice(0, 4)? != b"\x7fELF" {
             return Err("not an ELF file".into());
         }
@@ -154,6 +198,11 @@ impl<'a> Elf<'a> {
         if shentsize != 64 || (phnum > 0 && phentsize != 56) {
             return Err("unexpected ELF header entry sizes".into());
         }
+        // These ranges bound every subsequent header-field addition.
+        r.slice(shoff, shnum * 64)?;
+        if phnum > 0 {
+            r.slice(phoff, phnum * 56)?;
+        }
         let mut sections = Vec::new();
         for i in 0..shnum {
             let o = shoff + i * 64;
@@ -167,6 +216,13 @@ impl<'a> Elf<'a> {
                 link: r.u32(o + 40)?,
                 entsize: r.u64(o + 56)?,
             });
+        }
+        // NOBITS has no file contents. All other section ranges must fit the
+        // input before their offsets can participate in arithmetic.
+        for s in &sections {
+            if s.kind != 8 {
+                r.slice(s.offset, s.size)?;
+            }
         }
         let shstr = sections
             .get(shstrndx as usize)
@@ -185,33 +241,76 @@ impl<'a> Elf<'a> {
             .find(|s| s.kind == SHT_GNU_VERNEED && s.size > 0)
         {
             let strtab = sections.get(vn.link as usize).ok_or("bad verneed link")?;
+            let end = vn.offset + vn.size; // already bounded by the file
+            let mut claimed = std::collections::BTreeSet::new();
+            let mut claim = |at: u64| -> Result<(), String> {
+                if at < vn.offset || at > end || end - at < 16 {
+                    return Err("version record outside its section".into());
+                }
+                if claimed
+                    .range(..=at)
+                    .next_back()
+                    .is_some_and(|&p| at - p < 16)
+                    || claimed.range(at..).next().is_some_and(|&p| p - at < 16)
+                {
+                    return Err("overlapping version records".into());
+                }
+                r.version_record_count(1)?;
+                claimed.insert(at);
+                Ok(())
+            };
             let mut off = vn.offset;
-            for _ in 0..4096 {
-                let cnt = r.u16(off + 2)?;
-                let file = r.cstr(strtab, r.u32(off + 4)? as u64)?;
-                let mut aux = off + r.u32(off + 8)? as u64;
-                for _ in 0..cnt {
+            loop {
+                claim(off)?;
+                r.charge(16)?;
+                let cnt = u64::from(r.u16(off + 2)?);
+                let next = u64::from(r.u32(off + 12)?);
+                let next_record = if next == 0 {
+                    end
+                } else {
+                    if next < 16 || next > end - off {
+                        return Err("bad version requirement progress".into());
+                    }
+                    off + next
+                };
+                let aux_delta = u64::from(r.u32(off + 8)?);
+                if cnt == 0 || aux_delta < 16 || aux_delta > end - off {
+                    return Err("bad version auxiliary offset/count".into());
+                }
+                let mut aux = off + aux_delta;
+                if cnt > (end - aux) / 16 {
+                    return Err("version auxiliary count exceeds record".into());
+                }
+                let file = r.cstr(strtab, u64::from(r.u32(off + 4)?))?;
+                for i in 0..cnt {
+                    claim(aux)?;
+                    r.charge(16)?;
                     let flags = r.u16(aux + 4)?;
                     let index = r.u16(aux + 6)?;
-                    let version = r.cstr(strtab, r.u32(aux + 8)? as u64)?;
+                    let version = r.cstr(strtab, u64::from(r.u32(aux + 8)?))?;
                     let weak = flags & VER_FLG_WEAK != 0;
                     needs.push(VersionNeed {
-                        file: file.clone(),
-                        version: version.clone(),
+                        file: r.copy_string(&file)?,
+                        version: r.copy_string(&version)?,
                         weak,
                     });
-                    version_names.insert(index, (version, file.clone(), weak));
-                    let next = r.u32(aux + 12)?;
-                    if next == 0 {
-                        break;
+                    version_names.insert(index, (version, r.copy_string(&file)?, weak));
+                    let next = u64::from(r.u32(aux + 12)?);
+                    if i + 1 == cnt {
+                        if next != 0 {
+                            return Err("version auxiliary count mismatches chain".into());
+                        }
+                    } else {
+                        if next < 16 || next > end - aux {
+                            return Err("bad version auxiliary progress".into());
+                        }
+                        aux += next;
                     }
-                    aux += next as u64;
                 }
-                let next = r.u32(off + 12)?;
                 if next == 0 {
                     break;
                 }
-                off += next as u64;
+                off = next_record;
             }
         }
         if let Some(di) = dynsym_index {
@@ -221,7 +320,16 @@ impl<'a> Elf<'a> {
             if ds.entsize != 24 {
                 return Err("unexpected dynamic symbol size".into());
             }
+            if ds.size % 24 != 0 {
+                return Err("partial dynamic symbol".into());
+            }
+            r.charge(usize::try_from(ds.size).map_err(|_| "symbol size out of range")?)?;
             let count = ds.size / 24;
+            if let Some(v) = versym {
+                if v.size / 2 < count {
+                    return Err("short symbol version table".into());
+                }
+            }
             // Symbol index -> GOT slots, from the dynamic relocations.
             let mut slots: std::collections::BTreeMap<u64, Vec<u64>> = Default::default();
             for rel in sections
@@ -231,6 +339,10 @@ impl<'a> Elf<'a> {
                 if rel.entsize != 24 {
                     return Err("unexpected relocation size".into());
                 }
+                if rel.size % 24 != 0 {
+                    return Err("partial relocation".into());
+                }
+                r.charge(usize::try_from(rel.size).map_err(|_| "relocation size out of range")?)?;
                 for k in 0..rel.size / 24 {
                     let o = rel.offset + k * 24;
                     let info = r.u64(o + 8)?;
@@ -256,8 +368,8 @@ impl<'a> Elf<'a> {
                 };
                 imports.push(Import {
                     name,
-                    version: ver.map(|v| v.0.clone()),
-                    file: ver.map(|v| v.1.clone()),
+                    version: ver.map(|v| r.copy_string(&v.0)).transpose()?,
+                    file: ver.map(|v| r.copy_string(&v.1)).transpose()?,
                     weak: bind == STB_WEAK || ver.is_some_and(|v| v.2),
                     slots: slots.remove(&i).unwrap_or_default(),
                 });
@@ -266,10 +378,21 @@ impl<'a> Elf<'a> {
 
         // Executable sections.
         let mut code = Vec::new();
+        let mut code_ranges = std::collections::BTreeSet::new();
         for s in &sections {
             if s.flags & SHF_EXECINSTR != 0 && s.kind != 8 && s.size > 0 {
+                s.addr
+                    .checked_add(s.size)
+                    .ok_or("code address range overflows")?;
+                let name = name(s)?;
+                // Only coalesce equivalent mappings. Different virtual addresses
+                // change RIP-relative targets; PLT and non-PLT scans differ too.
+                if !code_ranges.insert((s.offset, s.size, s.addr, name.starts_with(".plt"))) {
+                    continue;
+                }
+                r.charge(usize::try_from(s.size).map_err(|_| "code size out of range")?)?;
                 code.push(Code {
-                    name: name(s)?,
+                    name,
                     addr: s.addr,
                     bytes: r.slice(s.offset, s.size)?,
                 });
@@ -299,12 +422,23 @@ impl<'a> Elf<'a> {
         }
         let mut abi_tag = None;
         for (off, size) in note_ranges {
+            r.slice(off, size)?;
+            r.charge(usize::try_from(size).map_err(|_| "note size out of range")?)?;
+            let end = off + size;
             let mut p = off;
-            while p + 12 <= off + size {
+            while end - p >= 12 {
                 let (namesz, descsz, kind) =
                     (r.u32(p)? as u64, r.u32(p + 4)? as u64, r.u32(p + 8)?);
                 let name_at = p + 12;
-                let desc_at = name_at + namesz.div_ceil(4) * 4;
+                let name_len = namesz.div_ceil(4) * 4; // namesz is a u32
+                let desc_len = descsz.div_ceil(4) * 4;
+                if name_len > end - name_at {
+                    return Err("note name exceeds its range".into());
+                }
+                let desc_at = name_at + name_len;
+                if desc_len > end - desc_at {
+                    return Err("note descriptor exceeds its range".into());
+                }
                 if kind == NT_GNU_ABI_TAG
                     && namesz == 4
                     && r.slice(name_at, 4)? == b"GNU\0"
@@ -317,11 +451,16 @@ impl<'a> Elf<'a> {
                         r.u32(desc_at + 12)?,
                     ]);
                 }
-                p = desc_at + descsz.div_ceil(4) * 4;
+                p = desc_at + desc_len;
             }
         }
         let mut relr = false;
         if let Some((off, size)) = dynamic {
+            r.slice(off, size)?;
+            r.charge(usize::try_from(size).map_err(|_| "dynamic size out of range")?)?;
+            if size % 16 != 0 {
+                return Err("partial dynamic entry".into());
+            }
             for k in 0..size / 16 {
                 let tag = r.u64(off + k * 16)? as i64;
                 if tag == 0 {

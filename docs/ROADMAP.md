@@ -159,3 +159,26 @@ from a distribution's glibc (measured for CentOS 7.9 and 2.17).
   providers; run the results in the distribution's own image.
 - [ ] Before any SDK redistribution, settle source availability (distribution source
   packages), license notices, and trademark naming.
+
+## Review follow-ups (2026-11-01)
+
+- [ ] Qualify container mounts on SELinux and rootful engines before choosing
+  narrower mounts, relabel opt-outs or automatic user mapping. Current `:z`
+  mounts can relabel the working tree; rootful image users can leave root-owned
+  files. These defaults are unchanged, not newly qualified.
+- [ ] Test i386/x32 rejection with each supported OCI runtime and decide whether
+  parity with the local filter's `ENOSYS` is needed. Native x86_64 coverage does
+  not establish foreign-ABI parity; no profile/data changes are implied.
+- [ ] Design cache reader/writer coordination for forced provider replacement.
+  `prepare --force` removes the old entry before renaming the staged one, so
+  concurrent readers may see missing paths, and rename failure can leave no
+  installed entry. Avoid forced replacement while builds use that entry;
+  atomicity and cross-platform recovery need a separate design/test change.
+
+Runner signal death remains the documented status `128` when the directly
+launched process has no numeric exit code; normal engine/program numeric status
+is preserved. This loses the signal number but remains a failure. Changing to
+`128 + signal` is a possible contract change, not part of the scoped fixes.
+
+See [review fix scope and validation](REVIEW-FIXES.md) for the unreleased parser
+and container I/O work. Published 0.3.2 remains immutable.
