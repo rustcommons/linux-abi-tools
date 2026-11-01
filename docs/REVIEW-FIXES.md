@@ -423,3 +423,9 @@ complete. Source-patched consumer integration passed as recorded above; real
 registry adoption, raised scanner/kernel minima and unpatched locked installs
 are separate downstream gates and are not claimed complete here. Published
 0.3.2 remains immutable and lacks these fixes.
+
+Subsequent downstream close-out: **cargo-libc 0.2.2 completed registry adoption
+and published locked-install validation**, as documented in its
+[final release record](https://github.com/rustcommons/cargo-libc/blob/1ca27da9086ebf6cf19a6f2c0e858108b38cac46/docs/RELEASE-0.2.2.md).
+That separate consumer evidence establishes the adoption and install results;
+the historical producer and source-candidate results above do not establish them.
