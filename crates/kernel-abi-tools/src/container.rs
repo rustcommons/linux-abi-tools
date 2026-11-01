@@ -41,6 +41,9 @@ impl Engine {
 /// directory, which could hide the image's own `/bin` or `/usr/bin`.
 /// `CARGO*`/`RUST*` variables are forwarded by name. Standard input stays
 /// attached (including pipes), without allocating a TTY. Suitable for a Cargo runner.
+/// Forwarded variables include credentials such as `CARGO_REGISTRY_TOKEN`:
+/// use a trusted image/program and unset credentials it does not need. Values
+/// stay out of runner arguments/logs but are visible to the engine/container.
 ///
 /// # Errors
 ///

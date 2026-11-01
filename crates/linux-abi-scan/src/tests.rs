@@ -645,12 +645,14 @@ fn rejects_reused_and_overlapping_version_records() {
 }
 
 #[test]
-fn rejects_aggregate_metadata_record_limit() {
+fn accepts_large_file_backed_fixed_tables() {
     let mut file = build(&Spec::default());
-    // Zero strings/allocations: this tests the record limit independently of
-    // the byte budget. Synthetic relocation entries are generated in memory.
-    replace_section(&mut file, 7, &vec![0u8; 65_537 * 24]);
-    assert!(elf::Elf::parse(&file).unwrap_err().contains("record limit"));
+    // Valid R_X86_64_NONE relocations and null dynamic symbols need no heap
+    // expansion. Their complete fixed-size tables fit in this bounded input.
+    replace_section(&mut file, 7, &vec![0u8; 150_000 * 24]);
+    replace_section(&mut file, 4, &vec![0u8; 70_000 * 24]);
+    replace_section(&mut file, 5, &vec![0u8; 70_000 * 2]);
+    assert!(elf::Elf::parse(&file).is_ok());
 }
 
 #[test]
@@ -716,4 +718,97 @@ fn parses_version_chains_beyond_old_silent_truncation_limit() {
     }
     replace_section(&mut file, 6, &records);
     assert_eq!(elf::Elf::parse(&file).unwrap().needs.len(), 4097);
+}
+
+fn append_code_alias(file: &mut Vec<u8>, source_index: usize, addr: u64) {
+    let h = section_header(file, source_index);
+    let mut header = file[h..h + 64].to_vec();
+    header[16..24].copy_from_slice(&addr.to_le_bytes());
+    // build() places the section table at EOF.
+    file.extend_from_slice(&header);
+    let count = u16::from_le_bytes(file[60..62].try_into().unwrap());
+    file[60..62].copy_from_slice(&(count + 1).to_le_bytes());
+}
+
+fn kernel_target() -> ScanTarget {
+    let selection = linux_targets::Selection::resolve(&linux_targets::Request {
+        kernel: Some("3.10"),
+        ..Default::default()
+    })
+    .unwrap();
+    ScanTarget::from_selection(&selection)
+}
+
+#[test]
+fn equivalent_code_aliases_coalesce_but_distinct_addresses_remain() {
+    let mut file = build(&Spec {
+        text: vec![0xb8, 1, 0, 0, 0, 0x0f, 0x05],
+        ..Spec::default()
+    });
+    append_code_alias(&mut file, 1, TEXT);
+    assert_eq!(elf::Elf::parse(&file).unwrap().code.len(), 1);
+    append_code_alias(&mut file, 1, TEXT + 4096);
+    let elf = elf::Elf::parse(&file).unwrap();
+    assert_eq!(elf.code.len(), 2);
+    let report = scan(&file, &kernel_target()).unwrap();
+    let addresses: Vec<_> = report
+        .findings
+        .iter()
+        .filter(|f| f.check == "syscall-insn")
+        .map(|f| f.address.unwrap())
+        .collect();
+    assert_eq!(addresses, [TEXT + 5, TEXT + 4096 + 5]);
+}
+
+#[test]
+fn aliased_code_cannot_expand_into_unbounded_findings() {
+    let mut file = build(&Spec::default());
+    // Keep fixtures small. Relocate a dense code range ahead of a fresh
+    // section table, so appended alias headers remain a contiguous table.
+    let old_sh = section_header(&file, 0);
+    let headers = file[old_sh..].to_vec();
+    file.truncate(old_sh);
+    let code_offset = file.len() as u64;
+    file.extend_from_slice(&[0xb8, 1, 0, 0, 0, 0x0f, 0x05].repeat(8192));
+    let new_sh = file.len() as u64;
+    file.extend_from_slice(&headers);
+    file[40..48].copy_from_slice(&new_sh.to_le_bytes());
+    let h = section_header(&file, 1);
+    file[h + 24..h + 32].copy_from_slice(&code_offset.to_le_bytes());
+    file[h + 32..h + 40].copy_from_slice(&(8192u64 * 7).to_le_bytes());
+    assert!(
+        scan(&file, &kernel_target()).is_ok(),
+        "a dense non-aliased section is valid"
+    );
+    for k in 1..8 {
+        append_code_alias(&mut file, 1, TEXT + k * 65536);
+    }
+    assert!(
+        elf::Elf::parse(&file).is_ok(),
+        "distinct mappings remain represented"
+    );
+    assert!(scan(&file, &kernel_target())
+        .unwrap_err()
+        .contains("code site count"));
+}
+
+#[test]
+fn version_chain_limit_remains_independent_of_fixed_tables() {
+    let mut file = build(&Spec::default());
+    replace_section(&mut file, 3, b"\0");
+    let count = 32_769;
+    let mut records = vec![0u8; count * 32];
+    for k in 0..count {
+        let h = k * 32;
+        records[h..h + 2].copy_from_slice(&1u16.to_le_bytes());
+        records[h + 2..h + 4].copy_from_slice(&1u16.to_le_bytes());
+        records[h + 8..h + 12].copy_from_slice(&16u32.to_le_bytes());
+        if k + 1 < count {
+            records[h + 12..h + 16].copy_from_slice(&32u32.to_le_bytes());
+        }
+    }
+    replace_section(&mut file, 6, &records);
+    assert!(elf::Elf::parse(&file)
+        .unwrap_err()
+        .contains("version record limit"));
 }

@@ -93,3 +93,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.90.0
       - run: cargo fetch --locked
       - run: cargo check --workspace --all-targets --locked --offline
+      - name: Accept official Rust 1.90 Cargo and compiler ELF files
+        shell: bash
+        run: |
+          sysroot=$(rustc --print sysroot)
+          drivers=("$sysroot"/lib/librustc_driver-*.so)
+          export LINUX_ABI_SCAN_CARGO_ELF="$sysroot/bin/cargo"
+          export LINUX_ABI_SCAN_RUSTC_DRIVER_ELF="${drivers[0]}"
+          cargo test -p linux-abi-scan --test toolchain_elf --locked --offline -- --ignored --nocapture

@@ -8,7 +8,7 @@ or provider build inputs. It is not a release announcement.
 
 - **F1:** ELF version requirements and auxiliaries must fit their section, make
   forward progress, match their counts, and not overlap or reuse records. The
-  old 4,096-header silent truncation is removed. A total 65,536 parsed metadata
+  old 4,096-header silent truncation is removed. A total 65,536 version-chain
   record limit and an aggregate work/string-copy budget (eight times input
   size, capped at 512 MiB) bound expansion from aliased input. The byte budget
   charges lossy UTF-8 expansion and copied strings before allocation. These
@@ -23,9 +23,50 @@ or provider build inputs. It is not a release announcement.
 - **F4/F5:** Both Docker and Podman receive explicit `-e NAME` options for
   existing `CARGO*`/`RUST*` names. Values stay in the inherited environment,
   not arguments/logs. `-i` attaches stdin without a TTY. Existing engine/run
-  options and child numeric exit statuses remain unchanged.
+  options and child numeric exit statuses remain unchanged. This also forwards
+  credentials such as `CARGO_REGISTRY_TOKEN` to the engine/container, as Podman
+  already did. Use trusted images/programs and unset unnecessary credentials;
+  values are not logged, and no new exclusion contract is introduced.
+- **R1:** Fixed-size symbol, relocation and dynamic tables use their validated
+  file ranges and aggregate byte budget, not the version-chain count limit.
+  This preserves acceptance of large legitimate tables in Rust toolchain ELF
+  files. The version-chain cap, progress/overlap checks and string budgets remain.
+- **R2:** Equivalent executable sections are coalesced only when file range,
+  virtual address and PLT classification match. Different addresses and partial
+  overlaps remain represented. Code scanning allows at most one site per two
+  input bytes and 1,048,576 sites total (separately for PLT stubs and report
+  sites), checked before building per-site findings. Exhaustion returns an
+  explicit error, never a truncated report. Very heavily aliased mappings can
+  exceed this resource limit despite being structurally valid ELF; distinct
+  address-specific evidence is not silently dropped.
 
-## Reproduction and validation
+## R1/R2 follow-up validation
+
+The former fixed-table record limit was reproduced on both official Rust 1.90
+x86_64 artifacts. After the correction, full scans against glibc 2.17/kernel 3.10
+accept `cargo` (41,437,528 bytes, 659 findings) and `librustc_driver` (153,389,440
+bytes, 473 findings). The artifacts were downloaded from the official Rust
+server and their archives matched the published SHA-256 files:
+
+| Archive | SHA-256 |
+| --- | --- |
+| [cargo-1.90.0-x86_64-unknown-linux-gnu.tar.xz](https://static.rust-lang.org/dist/cargo-1.90.0-x86_64-unknown-linux-gnu.tar.xz) | `9853db03d68578a30972e2755c89c66aec035fec641cf8f3a7117c81eec2578d` |
+| [rustc-1.90.0-x86_64-unknown-linux-gnu.tar.xz](https://static.rust-lang.org/dist/rustc-1.90.0-x86_64-unknown-linux-gnu.tar.xz) | `48c2a42de9e92fcae8c24568f5fe40d5734696a6f80e83cc6d46eef1a78f13c9` |
+
+The opt-in `toolchain_elf` regression reads these files without executing them.
+Set `LINUX_ABI_SCAN_CARGO_ELF` and `LINUX_ABI_SCAN_RUSTC_DRIVER_ELF`, then run
+`cargo test -p linux-abi-scan --test toolchain_elf --locked --offline -- --ignored --nocapture`.
+The hosted MSRV job runs it against its installed official Rust 1.90 toolchain.
+Synthetic tests accept 150,000 relocations and 70,000 symbols, retain the
+version-chain cap, preserve distinct virtual-address findings, coalesce exact
+aliases and reject excessive alias-derived sites without a partial report.
+
+Final local/hosted checks, independent re-review and combined cargo-libc
+integration must use the revised source. All evidence below for `c04269a` is
+historical and does not qualify this revision.
+
+## Historical initial validation (`c04269a`)
+
 
 The initial debug regressions ran with `ulimit -v 131072`, `ulimit -t 10`,
 `timeout 15s`, and one test thread. A fixture with 64 records and an 8 KiB
@@ -34,7 +75,7 @@ a truncated version section was accepted; an overflowing note range panicked.
 No multi-gigabyte amplification fixture was run.
 
 Regression coverage includes shared/overlapping version records, early chain
-termination, metadata and byte budgets, a valid 4,097-header chain, overflowing
+termination, version-chain and byte budgets, a valid 4,097-header chain, overflowing
 headers/string-table/code addresses, short version tables, note confinement,
 and a real scanner invocation returning status 2 instead of panicking. Docker
 and Podman command tests verify explicit names, exclusion of unrelated names,

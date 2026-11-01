@@ -76,12 +76,12 @@ pub struct Elf<'a> {
 
 // Bound aggregate work and owned strings even when many records alias the
 // same input bytes. Charge before allocating, including lossy UTF-8 expansion.
-const MAX_METADATA_RECORDS: usize = 65_536;
+const MAX_VERSION_RECORDS: usize = 65_536;
 
 struct Reader<'a> {
     bytes: &'a [u8],
     remaining_bytes: std::cell::Cell<usize>,
-    remaining_records: std::cell::Cell<usize>,
+    remaining_version_records: std::cell::Cell<usize>,
 }
 
 impl<'a> Reader<'a> {
@@ -94,14 +94,14 @@ impl<'a> Reader<'a> {
         self.remaining_bytes.set(remaining);
         Ok(())
     }
-    fn records(&self, count: u64) -> Result<(), String> {
-        let count = usize::try_from(count).map_err(|_| "metadata count out of range")?;
+    fn version_record_count(&self, count: u64) -> Result<(), String> {
+        let count = usize::try_from(count).map_err(|_| "version record count out of range")?;
         let remaining = self
-            .remaining_records
+            .remaining_version_records
             .get()
             .checked_sub(count)
-            .ok_or("ELF metadata record limit exceeded")?;
-        self.remaining_records.set(remaining);
+            .ok_or("ELF version record limit exceeded")?;
+        self.remaining_version_records.set(remaining);
         Ok(())
     }
     fn copy_string(&self, s: &str) -> Result<String, String> {
@@ -168,7 +168,7 @@ impl<'a> Elf<'a> {
     ///
     /// The input is larger than [`MAX_BYTES`], is not an ELF64 little-endian
     /// x86_64 file, has no section headers, or has a malformed or out-of-range
-    /// structure. Parsing also rejects more than 65,536 metadata records or
+    /// structure. Parsing also rejects more than 65,536 version-chain records or
     /// aggregate work/string copies exceeding eight times the input size
     /// (capped at 512 MiB), including repeated references to the same bytes.
     pub fn parse(bytes: &'a [u8]) -> Result<Self, String> {
@@ -178,7 +178,7 @@ impl<'a> Elf<'a> {
         let r = Reader {
             bytes,
             remaining_bytes: std::cell::Cell::new(bytes.len().saturating_mul(8).min(MAX_BYTES)),
-            remaining_records: std::cell::Cell::new(MAX_METADATA_RECORDS),
+            remaining_version_records: std::cell::Cell::new(MAX_VERSION_RECORDS),
         };
         if r.slice(0, 4)? != b"\x7fELF" {
             return Err("not an ELF file".into());
@@ -255,7 +255,7 @@ impl<'a> Elf<'a> {
                 {
                     return Err("overlapping version records".into());
                 }
-                r.records(1)?;
+                r.version_record_count(1)?;
                 claimed.insert(at);
                 Ok(())
             };
@@ -325,7 +325,6 @@ impl<'a> Elf<'a> {
             }
             r.charge(usize::try_from(ds.size).map_err(|_| "symbol size out of range")?)?;
             let count = ds.size / 24;
-            r.records(count)?;
             if let Some(v) = versym {
                 if v.size / 2 < count {
                     return Err("short symbol version table".into());
@@ -344,7 +343,6 @@ impl<'a> Elf<'a> {
                     return Err("partial relocation".into());
                 }
                 r.charge(usize::try_from(rel.size).map_err(|_| "relocation size out of range")?)?;
-                r.records(rel.size / 24)?;
                 for k in 0..rel.size / 24 {
                     let o = rel.offset + k * 24;
                     let info = r.u64(o + 8)?;
@@ -380,14 +378,21 @@ impl<'a> Elf<'a> {
 
         // Executable sections.
         let mut code = Vec::new();
+        let mut code_ranges = std::collections::BTreeSet::new();
         for s in &sections {
             if s.flags & SHF_EXECINSTR != 0 && s.kind != 8 && s.size > 0 {
                 s.addr
                     .checked_add(s.size)
                     .ok_or("code address range overflows")?;
+                let name = name(s)?;
+                // Only coalesce equivalent mappings. Different virtual addresses
+                // change RIP-relative targets; PLT and non-PLT scans differ too.
+                if !code_ranges.insert((s.offset, s.size, s.addr, name.starts_with(".plt"))) {
+                    continue;
+                }
                 r.charge(usize::try_from(s.size).map_err(|_| "code size out of range")?)?;
                 code.push(Code {
-                    name: name(s)?,
+                    name,
                     addr: s.addr,
                     bytes: r.slice(s.offset, s.size)?,
                 });
@@ -422,7 +427,6 @@ impl<'a> Elf<'a> {
             let end = off + size;
             let mut p = off;
             while end - p >= 12 {
-                r.records(1)?;
                 let (namesz, descsz, kind) =
                     (r.u32(p)? as u64, r.u32(p + 4)? as u64, r.u32(p + 8)?);
                 let name_at = p + 12;
@@ -457,7 +461,6 @@ impl<'a> Elf<'a> {
             if size % 16 != 0 {
                 return Err("partial dynamic entry".into());
             }
-            r.records(size / 16)?;
             for k in 0..size / 16 {
                 let tag = r.u64(off + k * 16)? as i64;
                 if tag == 0 {

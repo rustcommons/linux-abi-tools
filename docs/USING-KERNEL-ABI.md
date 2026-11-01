@@ -39,6 +39,14 @@ program name (`sh`) runs from the image. Engine and runtime options come from
 `CONTAINER_ENGINE` (default `podman`), `KERNEL_ABI_ENGINE_ARGS` (e.g.
 `--runtime crun`) and `KERNEL_ABI_RUN_ARGS` (e.g. `--network none`).
 
+Environment forwarding is a trust boundary: all existing `CARGO*`/`RUST*`
+variables reach the selected engine and container, including credentials such
+as `CARGO_REGISTRY_TOKEN` and named-registry tokens. Forwarding by name keeps
+values out of the runner's arguments and logs; it does not hide them from the
+container. Use trusted images/programs and unset credentials not needed by the
+run. This preserves the existing Podman forwarding contract; no implicit token
+exclusion or new allowlist is introduced.
+
 Mounts use `:z` (and `:ro,z` for an external program file). On SELinux hosts
 this can recursively relabel the mounted working tree; use a dedicated project
 directory, not a broad directory such as your home. See the
