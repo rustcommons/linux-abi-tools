@@ -101,7 +101,7 @@ authorization. Preserve dated qualification evidence as historical records.
 
 This policy applies to the five linux-abi-tools workspace packages. For
 cargo-libc releases, follow its maintained
-[release documentation](https://github.com/rustcommons/cargo-libc/tree/main/docs)
+[release policy](https://github.com/rustcommons/cargo-libc/blob/main/docs/RELEASING.md)
 rather than duplicating its policy here.
 
 ## Cutting a release
