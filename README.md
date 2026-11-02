@@ -66,6 +66,12 @@ selection, depend on `libc-abi-tools` directly; see [feature choices](https://gi
 - [Maintainer guide](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/MAINTAINING.md): source checkout, collection, regeneration,
   validation and release procedures.
 
+## Releases
+
+- [Changelog](https://github.com/rustcommons/linux-abi-tools/blob/main/CHANGELOG.md): changes, upgrade impact and versioned notes.
+- [GitHub Releases](https://github.com/rustcommons/linux-abi-tools/releases): user-facing release notes for existing source tags; historical backfill is in progress.
+- [Release policy](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/RELEASING.md): validation, registry packages and release completion.
+
 ## Scope and provenance
 
 The pinned glibc snapshots and providers cover 2.17–2.44; see the
@@ -91,7 +97,7 @@ Zig's libc ABI tools. See [NOTICE.md](https://github.com/rustcommons/linux-abi-t
 No Zig installation is required.
 
 See the [roadmap](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/ROADMAP.md) for open work and the
-[0.3.3 release record](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/REVIEW-FIXES.md#published-033-archives-and-documentation) for published versions, checksums and validation evidence.
+[0.4.0 release record](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/RELEASING.md#published-040-archives-and-documentation) for published versions, checksums and validation evidence.
 The crates are published to crates.io. The
 [requirements and documentation map](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/REQUIREMENTS.md)
 indexes confirmed constraints, bounded evidence and remaining gaps.
