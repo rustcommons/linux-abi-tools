@@ -41,6 +41,17 @@ def manifest_version(root: Path) -> str:
     return value
 
 
+def markdown_targets(body: str) -> list[str]:
+    """Conservatively check inline links/images and reference definitions."""
+    targets = []
+    for match in re.finditer(r"\]\(\s*(?:<([^>\r\n]+)>|([^\s)]+))", body):
+        targets.append(match.group(1) or match.group(2))
+    definitions = r"(?m)^ {0,3}\[(?!\^)(?:\\.|[^\]\\])+\]:[ \t]*(?:\r?\n[ \t]*)?(?:<([^>\r\n]+)>|(\S+))"
+    for match in re.finditer(definitions, body):
+        targets.append(match.group(1) or match.group(2))
+    return targets
+
+
 def local_check(root: Path, repo: str) -> tuple[str, dict[str, str]]:
     current = manifest_version(root)
     changelog = text(root / "CHANGELOG.md")
@@ -66,8 +77,8 @@ def local_check(root: Path, repo: str) -> tuple[str, dict[str, str]]:
                 or f"https://github.com/{repo}/releases/tag/v{version}" in note,
                 f"v{version} notes need an absolute source-tag or release link")
         require("CHANGELOG.md" in note, f"v{version} notes need a changelog link")
-        for target in re.findall(r"\]\(([^)\s]+)(?:\s+[^)]*)?\)", note):
-            require(target.startswith(("https://", "http://", "#")),
+        for target in markdown_targets(note):
+            require(target.startswith("#") or re.match(r"https?://", target, re.I) is not None,
                     f"v{version} release-body link must be absolute: {target}")
         notes[version] = note
     note_versions = {p.stem[1:] for p in (root / "docs" / "releases").glob("v*.md")}
@@ -104,7 +115,22 @@ def published_check(repo: str, current: str, notes: dict[str, str],
         require(len(releases) < 100,
                 "Release history reached API page size; add pagination before claiming complete verification")
     by_tag = {release["tag_name"]: release for release in releases}
-    tags = {entry["name"]: entry for entry in github(repo, "tags?per_page=100")}
+    tag_entries = github(repo, "tags?per_page=100")
+    require(len(tag_entries) < 100,
+            "Tag history reached API page size; add pagination before claiming complete verification")
+    tags = {entry["name"]: entry for entry in tag_entries}
+    if not only_tag:
+        version_tag = re.compile("v" + VERSION)
+        remote_version_tags = {tag for tag in tags if version_tag.fullmatch(tag)}
+        remote_release_tags = {tag for tag in by_tag if version_tag.fullmatch(tag)}
+        documented_tags = {f"v{version}" for version in notes}
+        missing = sorted((remote_version_tags | remote_release_tags) - documented_tags)
+        require(not missing, "Existing version tags/releases have no reviewed local notes: "
+                + ", ".join(missing))
+        other_tags = (set(tags) | set(by_tag)) - remote_version_tags - remote_release_tags
+        if other_tags:
+            print("Non-version tags/channels outside this versioned-history check: "
+                  + ", ".join(sorted(other_tags)))
     for version, expected in selected.items():
         tag = f"v{version}"
         require(tag in tags, f"Missing existing source tag: {tag}")
