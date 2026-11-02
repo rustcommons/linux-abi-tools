@@ -17,9 +17,11 @@ no tag was moved and no crate was republished.
 
 - Add this changelog and versioned user-facing notes for all seven existing tags;
   distinguish old test evidence, current artifact verification and remaining gaps.
-- Add release navigation, the shared release-documentation rule and a dedicated
-  stdlib-only documentation checker/workflow. GitHub Release backfill remains
-  pending review/authorization to execute; no new version or binary is proposed.
+- Add release navigation, the shared AGENTS release rule v2 and the stdlib-only
+  checker v3/workflow. The seven existing-tag GitHub Releases are now backfilled
+  after independent review and green bootstrap CI; exact bodies/tags, only
+  v0.4.0 latest, zero attached assets and full published-verification CI passed.
+  This documentation work introduces no new software version or binary.
 
 ## [0.4.0] - 2026-11-02
 

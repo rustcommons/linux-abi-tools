@@ -133,7 +133,7 @@ A release is complete only when its source tag, applicable registry archives,
 GitHub Release notes, changelog, documentation and verification agree. A tag or
 crate upload alone does not meet that documentation-completion rule. The
 [GitHub Releases index](https://github.com/rustcommons/linux-abi-tools/releases)
-was empty in the 2026-11-02 history audit: all seven source tags and all 35
+was empty in the initial 2026-11-02 history audit: all seven source tags and all 35
 crate-version archives existed, but GitHub note publication was missing. This
 backfill requires no new crate version, tag, archive or binary.
 
@@ -144,8 +144,8 @@ consolidated final-tag validation bundles and preserve the narrower historical
 records. Later 0.3.2–0.4.0 qualification records keep their original scope.
 No historical test run is inferred or fabricated from current source or a
 configured workflow. The original dates in the changelog/notes are registry
-publication dates; GitHub's new publication dates will be the actual backfill
-dates. Backfilled documents did not exist at old source tags: use absolute `main`
+publication dates; GitHub's posting dates are the actual backfill dates, not
+the original registry dates. Backfilled documents did not exist at old source tags: use absolute `main`
 or documentation-commit links, never `blob/vOLD/CHANGELOG.md`. Every release-body
 link must be absolute, so it resolves on GitHub Releases too.
 
@@ -182,6 +182,49 @@ gh workflow run release-docs.yml --ref main -f verify_published=true
 query the network; neither checker mode publishes anything. Keep the shared
 checker/workflow byte-identical to the reviewed shared versions. Markdown/CI-only
 changes need these documentation checks, not unrelated full Rust/provider suites.
+
+## Release-documentation backfill completed (2026-11-02)
+
+The initial pre-registration workflow lookup returned HTTP 404 because the new
+workflow was not yet on the default branch. That dated bootstrap observation and
+the independently reviewed local checker/syntax evidence remain historical; no
+candidate hosted pass was inferred from them. Normal bootstrap merge
+[`6f1e5bdeb06f168bf29f1d7bddf937c028e5cb60`](https://github.com/rustcommons/linux-abi-tools/commit/6f1e5bdeb06f168bf29f1d7bddf937c028e5cb60)
+preserved the approved `01d335246a3f8d5c19aef007c71e8c2efd0ab329` tree and registered
+the workflow on `main`.
+
+The shared **AGENTS release rule v2** defines that bootstrap policy. The shared
+**checker v3** is a separate reviewed file, SHA-256
+`6e666710a350d9c176a5f79a17a7a0ac16f5aeaa0e0801baf0a967485524fdea`;
+neither shared file nor the workflow was changed during publication or this
+freshness correction.
+
+[Bootstrap run 41387837849](https://github.com/rustcommons/linux-abi-tools/actions/runs/41387837849)
+completed **SUCCESS** on `6f1e5bd` before any Release entry was created. The seven
+entries were then published in ascending version order from the committed
+`docs/releases/vX.Y.Z.md` files using `--notes-file` and `--verify-tag`. Older
+entries used `--latest=false`; only `v0.4.0` used `--latest=true`.
+
+[Full published-verification run 41388248802](https://github.com/rustcommons/linux-abi-tools/actions/runs/41388248802)
+completed **SUCCESS** on the same merge, including `--published`. The local full
+published checker also passed. Verification confirmed exact committed note bodies,
+unchanged existing tag commits, only `v0.4.0` latest, and **zero attached assets**
+for every entry. All 75 distinct note-link targets returned HTTP 200 with browser
+HTML headers; the initial machine-header 404 responses for registry UI routes
+were recorded separately and resolved without changing the notes.
+
+Published entries: [v0.1.0](https://github.com/rustcommons/linux-abi-tools/releases/tag/v0.1.0),
+[v0.2.0](https://github.com/rustcommons/linux-abi-tools/releases/tag/v0.2.0),
+[v0.3.0](https://github.com/rustcommons/linux-abi-tools/releases/tag/v0.3.0),
+[v0.3.1](https://github.com/rustcommons/linux-abi-tools/releases/tag/v0.3.1),
+[v0.3.2](https://github.com/rustcommons/linux-abi-tools/releases/tag/v0.3.2),
+[v0.3.3](https://github.com/rustcommons/linux-abi-tools/releases/tag/v0.3.3), and
+[v0.4.0](https://github.com/rustcommons/linux-abi-tools/releases/tag/v0.4.0).
+Their GitHub posting dates are 2026-11-02; original registry dates and source
+identities remain as recorded in the immutable notes. No crate was republished,
+no tag was created or moved, and no binary assets were added. This completes
+release-documentation backfill, not additional product/runtime qualification.
+Routine merges now use the registered documentation CI gate above.
 
 ## Cutting a release
 

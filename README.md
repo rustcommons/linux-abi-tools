@@ -69,7 +69,7 @@ selection, depend on `libc-abi-tools` directly; see [feature choices](https://gi
 ## Releases
 
 - [Changelog](https://github.com/rustcommons/linux-abi-tools/blob/main/CHANGELOG.md): changes, upgrade impact and versioned notes.
-- [GitHub Releases](https://github.com/rustcommons/linux-abi-tools/releases): user-facing release notes for existing source tags; historical backfill is in progress.
+- [GitHub Releases](https://github.com/rustcommons/linux-abi-tools/releases): reviewed user-facing release notes for existing source tags.
 - [Release policy](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/RELEASING.md): validation, registry packages and release completion.
 
 ## Scope and provenance
