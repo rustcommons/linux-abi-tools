@@ -1,0 +1,1 @@
+GLIBC_2.2.5 { global: clock_gettime; clock_getres; clock_settime; clock_nanosleep; clock_getcpuclockid; timer_create; local: *; };

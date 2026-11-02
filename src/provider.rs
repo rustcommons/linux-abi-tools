@@ -62,6 +62,7 @@ pub mod build;
 pub mod cache;
 pub mod cli;
 pub mod json;
+pub mod link_profile;
 pub mod pins;
 pub mod prepare;
 
