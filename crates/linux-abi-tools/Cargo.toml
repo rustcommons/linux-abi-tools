@@ -1,6 +1,6 @@
 [package]
 name = "linux-abi-tools"
-version = "0.3.3"
+version = "0.4.0"
 edition = "2021"
 rust-version = "1.90"
 description = "Target older Linux systems from Rust: glibc ABI data, kernel syscall simulation, and distribution presets in one dependency"
@@ -17,10 +17,10 @@ name = "linux_abi_tools"
 path = "src/lib.rs"
 
 [dependencies]
-kernel-abi-tools = { path = "../kernel-abi-tools", version = "0.3.3" }
-libc-abi-tools = { path = "../..", version = "0.3.3" }
-linux-abi-scan = { path = "../linux-abi-scan", version = "0.3.3" }
-linux-targets = { path = "../linux-targets", version = "0.3.3" }
+kernel-abi-tools = { path = "../kernel-abi-tools", version = "0.4.0" }
+libc-abi-tools = { path = "../..", version = "0.4.0" }
+linux-abi-scan = { path = "../linux-abi-scan", version = "0.4.0" }
+linux-targets = { path = "../linux-targets", version = "0.4.0" }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

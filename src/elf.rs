@@ -63,6 +63,7 @@ struct Section {
     info: u32,
     entry_size: u64,
     alignment: u64,
+    address: u64,
 }
 
 struct Reader<'a>(&'a [u8]);
@@ -252,6 +253,7 @@ impl Metadata {
                 info: r.u32(pos + 44)?,
                 entry_size: r.u64(pos + 56)?,
                 alignment: r.u64(pos + 48)?,
+                address: r.u64(pos + 16)?,
             });
         }
         let (sym_index, sym_section) =
@@ -554,4 +556,298 @@ impl Metadata {
         }
         text
     }
+}
+
+// Require section metadata to describe the tables the loader actually uses.
+fn profile_tables(bytes: &[u8]) -> Result<(Section, Section, Vec<Section>), String> {
+    let r = Reader(bytes);
+    let shoff = r.u64(40)?;
+    let shnum = r.u16(60)?;
+    let mut sections = Vec::new();
+    for i in 0..shnum {
+        let p = shoff
+            .checked_add(u64::from(i) * 64)
+            .ok_or("section offset overflow")?;
+        sections.push(Section {
+            kind: r.u32(p + 4)?,
+            address: r.u64(p + 16)?,
+            offset: r.u64(p + 24)?,
+            size: r.u64(p + 32)?,
+            link: r.u32(p + 40)?,
+            info: r.u32(p + 44)?,
+            alignment: r.u64(p + 48)?,
+            entry_size: r.u64(p + 56)?,
+        });
+    }
+    let (_, sym) = one(&sections, DYNSYM)?.ok_or("missing dynamic symbols")?;
+    let (_, dynamic) = one(&sections, DYNAMIC)?.ok_or("missing dynamic section")?;
+    let (_, versym) = one(&sections, VERSYM)?.ok_or("clock profile requires version symbols")?;
+    let (_, verdef) =
+        one(&sections, VERDEF)?.ok_or("clock profile requires version definitions")?;
+    if dynamic.link != sym.link {
+        return Err("loader SONAME and symbols require one string table".into());
+    }
+    let names = *sections
+        .get(sym.link as usize)
+        .ok_or("invalid string link")?;
+    let phoff = r.u64(32)?;
+    let phnum = r.u16(56)?;
+    if r.u16(54)? != 56 || phnum == 0 || phnum == 0xffff {
+        return Err("clock profile requires ordinary program headers".into());
+    }
+    r.slice(phoff, u64::from(phnum) * 56)?;
+    let mut loads = Vec::new();
+    let mut dynamic_matches = 0;
+    let mut dynamic_count = 0;
+    for i in 0..phnum {
+        let p = phoff
+            .checked_add(u64::from(i) * 56)
+            .ok_or("program offset overflow")?;
+        let kind = r.u32(p)?;
+        let offset = r.u64(p + 8)?;
+        let address = r.u64(p + 16)?;
+        let size = r.u64(p + 32)?;
+        if kind == 1 {
+            let memory_size = r.u64(p + 40)?;
+            let alignment = r.u64(p + 48)?;
+            if size > memory_size
+                || address.checked_add(memory_size).is_none()
+                || (alignment > 1
+                    && (!alignment.is_power_of_two() || offset % alignment != address % alignment))
+            {
+                return Err("invalid loader segment extent or alignment".into());
+            }
+            r.slice(offset, size)?;
+            loads.push((offset, address, size, memory_size));
+        }
+        if kind == 2 {
+            dynamic_count += 1;
+        }
+        if kind == 2
+            && offset == dynamic.offset
+            && address == dynamic.address
+            && size == dynamic.size
+        {
+            dynamic_matches += 1;
+        }
+    }
+    if dynamic_matches != 1 || dynamic_count != 1 {
+        return Err("dynamic section does not match loader segment".into());
+    }
+    for section in [sym, names, versym, verdef, dynamic] {
+        let end = section
+            .address
+            .checked_add(section.size)
+            .ok_or("table address overflow")?;
+        let mut mapped = false;
+        for &(offset, address, size, memory_size) in &loads {
+            let file_end = address.checked_add(size).ok_or("load address overflow")?;
+            let memory_end = address
+                .checked_add(memory_size)
+                .ok_or("load address overflow")?;
+            // A file tail followed by BSS is zeroed through the last page,
+            // including bytes beyond the segment's logical memory end.
+            if memory_size > size {
+                let zero_end = memory_end
+                    .checked_add(4095)
+                    .ok_or("load zero-fill overflow")?
+                    / 4096
+                    * 4096;
+                if file_end < end && section.address < zero_end {
+                    return Err("loader zero-fill page shadows ELF table".into());
+                }
+            }
+            let start = section.address.max(address);
+            let overlap_end = end.min(memory_end);
+            if start < overlap_end {
+                if overlap_end > file_end {
+                    return Err("loader zero-fill shadows ELF table".into());
+                }
+                let actual = offset
+                    .checked_add(start - address)
+                    .ok_or("load mapping overflow")?;
+                let expected = section
+                    .offset
+                    .checked_add(start - section.address)
+                    .ok_or("table mapping overflow")?;
+                if actual != expected {
+                    return Err("conflicting partial loader table mapping".into());
+                }
+            }
+            // x86_64 Linux maps PT_LOAD file pages at 4 KiB granularity. A
+            // neighboring partial segment can shadow a table in the same page.
+            if size != 0 {
+                const PAGE: u64 = 4096;
+                if offset % PAGE != address % PAGE {
+                    return Err("invalid loader page alignment".into());
+                }
+                let page_start = address / PAGE * PAGE;
+                let page_end =
+                    file_end.checked_add(PAGE - 1).ok_or("load page overflow")? / PAGE * PAGE;
+                let page_offset = offset
+                    .checked_sub(address % PAGE)
+                    .ok_or("load page offset overflow")?;
+                let start = section.address.max(page_start);
+                if start < end.min(page_end) {
+                    let actual = page_offset
+                        .checked_add(start - page_start)
+                        .ok_or("load page mapping overflow")?;
+                    let expected = section
+                        .offset
+                        .checked_add(start - section.address)
+                        .ok_or("table mapping overflow")?;
+                    if actual != expected {
+                        return Err("conflicting loader page shadows ELF table".into());
+                    }
+                }
+            }
+            if address <= section.address && end <= file_end {
+                mapped = true;
+            }
+        }
+        if !mapped {
+            return Err("ELF table is not backed by its loader mapping".into());
+        }
+    }
+    let mut tags = BTreeMap::new();
+    for pos in (0..dynamic.size).step_by(16) {
+        let p = dynamic
+            .offset
+            .checked_add(pos)
+            .ok_or("dynamic offset overflow")?;
+        let tag = r.u64(p)?;
+        if tag == 0 {
+            break;
+        }
+        if matches!(
+            tag,
+            5 | 6 | 10 | 11 | 0x6fff_fff0 | 0x6fff_fffc | 0x6fff_fffd
+        ) && tags.insert(tag, r.u64(p + 8)?).is_some()
+        {
+            return Err("duplicate loader table tag".into());
+        }
+    }
+    for (tag, expected) in [
+        (5, names.address),
+        (6, sym.address),
+        (10, names.size),
+        (11, 24),
+        (0x6fff_fff0, versym.address),
+        (0x6fff_fffc, verdef.address),
+        (0x6fff_fffd, u64::from(verdef.info)),
+    ] {
+        if tags.get(&tag) != Some(&expected) {
+            return Err("loader and section tables disagree".into());
+        }
+    }
+    let end = versym
+        .offset
+        .checked_add(versym.size)
+        .ok_or("version range overflow")?;
+    let overlaps = |offset: u64, size: u64| -> Result<bool, String> {
+        Ok(size != 0
+            && versym.offset < offset.checked_add(size).ok_or("table range overflow")?
+            && offset < end)
+    };
+    if overlaps(0, 64)?
+        || overlaps(shoff, u64::from(shnum) * 64)?
+        || overlaps(phoff, u64::from(phnum) * 56)?
+    {
+        return Err("version symbols overlap ELF headers".into());
+    }
+    for section in &sections {
+        if section.kind != VERSYM && section.kind != 8 && overlaps(section.offset, section.size)? {
+            return Err("version symbols overlap another section".into());
+        }
+    }
+    Ok((sym, versym, sections))
+}
+
+pub(crate) fn libc_clock_copy(libc: &[u8], rt: &[u8]) -> Result<Option<Vec<u8>>, String> {
+    const CLOCKS: [&str; 5] = [
+        "clock_gettime",
+        "clock_getres",
+        "clock_settime",
+        "clock_nanosleep",
+        "clock_getcpuclockid",
+    ];
+    let c = Metadata::parse(libc)?;
+    let original = Metadata::parse(rt)?;
+    if c.soname != "libc.so.6" || original.soname != "librt.so.1" {
+        return Err("clock profile requires libc.so.6 and librt.so.1 ELF inputs".into());
+    }
+    profile_tables(libc)?;
+    for name in CLOCKS {
+        let defaults: Vec<_> = c
+            .symbols
+            .iter()
+            .filter(|s| s.name == name && s.default_version == Some(true))
+            .collect();
+        if defaults.len() != 1
+            || defaults[0].version.as_deref() != Some("GLIBC_2.17")
+            || !matches!(defaults[0].symbol_type, 2 | 10)
+            || !matches!(defaults[0].binding, 1 | 2)
+            || !matches!(defaults[0].visibility, 0 | 3)
+        {
+            return Err(format!("clock profile requires libc {name}@@GLIBC_2.17"));
+        }
+    }
+    let mut expected = original.clone();
+    let mut changed = BTreeSet::new();
+    for symbol in &mut expected.symbols {
+        if CLOCKS.contains(&symbol.name.as_str()) {
+            if !matches!(symbol.symbol_type, 2 | 10)
+                || !matches!(symbol.binding, 1 | 2)
+                || !matches!(symbol.visibility, 0 | 3)
+                || symbol.default_version.is_none()
+            {
+                return Err(format!(
+                    "unsupported librt clock definition: {}",
+                    symbol.name
+                ));
+            }
+            if symbol.default_version == Some(true) {
+                if symbol.version.as_deref() != Some("GLIBC_2.2.5") {
+                    return Err("unsupported librt default clock version".into());
+                }
+                changed.insert(symbol.name.clone());
+                symbol.default_version = Some(false);
+            }
+        }
+    }
+    // Even no-op input must be consistent with its loader tables.
+    let (sym, versym, sections) = profile_tables(rt)?;
+    if changed.is_empty() {
+        return Ok(None);
+    }
+    let r = Reader(rt);
+    let names = strings(&r, &sections, sym.link)?;
+    let mut derived = rt.to_vec();
+    let mut patched = BTreeSet::new();
+    for index in 1..sym.size / 24 {
+        let pos = sym
+            .offset
+            .checked_add(index * 24)
+            .ok_or("symbol offset overflow")?;
+        if r.u16(pos + 6)? == 0 || r.slice(pos + 4, 1)?[0] >> 4 == 0 {
+            continue;
+        }
+        let name = names.string(r.u32(pos)?)?;
+        let at = versym
+            .offset
+            .checked_add(index * 2)
+            .ok_or("version offset overflow")?;
+        let version = r.u16(at)?;
+        if changed.contains(&name) && version & 0x8000 == 0 {
+            let byte = usize::try_from(at.checked_add(1).ok_or("version offset overflow")?)
+                .map_err(|_| "version offset too large")?;
+            let target = derived.get_mut(byte).ok_or("version offset outside file")?;
+            *target |= 0x80;
+            patched.insert(name);
+        }
+    }
+    if patched != changed || Metadata::parse(&derived)? != expected {
+        return Err("derived clock metadata differs beyond the permitted default flags".into());
+    }
+    Ok(Some(derived))
 }

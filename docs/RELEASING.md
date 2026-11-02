@@ -178,3 +178,125 @@ With bundled ABI data disabled, supply an external data directory.
 
 Checksums on crates.io protect integrity, not publisher identity. Mirror trust
 is a separate decision (see the kernel roadmap).
+
+
+## Planned 0.4.0 clock overlay release
+
+Preparation only; 0.3.3 remains the published workspace release. New public
+`provider::link_profile` API requires a minor release under the lockstep policy:
+all five versions/internal minima and the workspace lock are prepared at 0.4.0.
+No new upstream glibc dependency requirements, data regeneration, kernel profiles,
+runtime implementation or unwinder changes are included. Raw provider generation
+and descriptor v1 remain faithful; the explicitly requested derived overlay has
+its own content/policy identity. See the [API contract](USING-PROVIDERS.md#derived-clock-link-overlay-api).
+
+The 2026-11-02 producer investigation covered 746 cross-link cases (742 successful
+links, four expected static failures). That ordering investigation is diagnostic
+evidence, not a production ordering fix: later mixed-version probes disproved
+ordering alone for GNU ld. The committed overlay regression separately checks
+recorded 2.17–2.44 stub inputs, plus 32 GNU ld 2.40 / LLD 23.1.1 links on 2.22:
+all five ordinary/explicit-old clocks, four call/address combinations,
+PIE/non-PIE and both as-needed states, retaining `timer_create` as an RT control.
+These are link/ELF inspections, not runtime executions. Portable fixture tests
+cover byte preservation, invalid inputs, cache identity/corruption and concurrent
+writers. The explicit linker gate is ignored in ordinary portable test runs and
+requires the recorded stub directory plus cross tools; it never substitutes host
+libraries. The explicit `selected_real_dso_copy` gate also passed against Debian's real
+x86_64 libc/librt 2.28-10+deb10u1: exactly five changed bytes, all metadata other
+than the clock default flags preserved, inputs unchanged. Download:
+[Debian archived libc6 package](https://archive.debian.org/debian/pool/main/g/glibc/libc6_2.28-10+deb10u1_amd64.deb),
+SHA-256 `0ee0f0bfcd7b59ffda1dbc76ef58fa79512913204f2a336206467bfbf45bc69f`.
+That byte-derivation check does not qualify compiler sysroot discovery or runtime
+execution. Full-sysroot consumer orchestration and independent review remain
+pending. No old 0.3.3 qualification run proves this new feature.
+
+Before a release candidate: complete fmt, MSRV, workspace/default/no-default
+clippy/tests/docs and five-package archive gates on the exact final source;
+independent producer review and consumer/native qualification remain required.
+Publish only after the coordinator's approval, in order `linux-targets` →
+`kernel-abi-tools` → `linux-abi-scan` → `libc-abi-tools` → `linux-abi-tools`.
+The coordinator alone publishes and confirms all five before any new tag.
+Tier 3 remains deferred, not an ordinary-release blocker; authenticated prebuilt
+delivery remains deferred pending legal review. Cache verification is local
+content integrity, not producer authentication.
+
+
+The 2026-11-02 independent review rejected producer source `1b3b51c8afad88e05b0dc238c15f5ee879f94184`:
+a conflicting partial PT_LOAD could evade table validation, and directory rename
+could replace a concurrently created empty cache entry. That source is blocked;
+its earlier passing owner checks do not qualify a corrected source. The revised
+implementation checks partial and 4 KiB load-page shadows, retaining consistent
+aliases, and publishes complete private generations with a no-clobber hard-linked
+manifest index. Tests cover racing empty destinations, winner persistence, loser
+cleanup, invalid generation names and ignored unindexed partial generations.
+Exact old-ref reproductions remain historical evidence; corrected probes account
+for the new generation manifest field and intercept hard-link publication rather
+than rename. Independent re-review and exact-source consumer/native qualification
+remain required before any publication.
+
+
+Corrected producer source `e857e43f113fd5fb02d0f2afff58b90fcfbd1ee6` passed the
+producer-local gates on 2026-11-02 (aarch64 Linux host, x86_64 cross-link targets):
+127 workspace/all-targets tests, six doctests, 57 no-default tests; fmt; Rust
+1.90 workspace/all-targets check; workspace/default and root/no-default clippy;
+warning-denied all-feature workspace docs; five-package workspace packaging and
+archive audit with clean VCS identity. Focused evidence comprises 12 ELF/cache
+integration tests plus two publication unit tests, the separately invoked
+28-release/32-link gate and real Debian 2.28 DSO gate described above. Both
+independent reviewer reproducers were rerun: the original blocked source still
+reproduces its two failures; corrected-source assertions require partial-map
+refusal and an unchanged racing empty index. Only the internal generation field,
+hard-link hook and expected fixed outcomes changed in the probe harnesses.
+
+This is bounded producer preparation evidence. Hosted checks, independent GO and
+full consumer/native qualification remain pending; no registry adoption,
+publication or runtime compatibility is established by these local checks.
+
+
+### Manual source and Windows evidence (2026-11-02)
+
+These checks use corrected producer source
+`e857e43f113fd5fb02d0f2afff58b90fcfbd1ee6`; later evidence-only changes do not
+alter its source, manifests or repository lock. They supplement the local gates
+above and do not turn queued hosted checks into passes.
+
+- Native x86_64 WSL, Rust/Cargo 1.90.0: `cargo test --test link_profile --lib
+  --locked --offline` passed 22 library and 12 integration tests. The two
+  external Linux linker/real-DSO gates were explicitly ignored in this run and
+  were separately executed in the producer cross-link evidence above. Raw log
+  `producer-e857-msrv-native.log`, SHA-256
+  `240aa5591891bc681f2b88c371479d6fc2e8a1e51410b8f74e02760f9dff3de4`.
+- Windows x86_64 MSVC/NTFS, Rust/Cargo 1.99.0, isolated target directory: the same
+  focused command passed 22 library and 11 integration tests. The Unix-only
+  symlink case is excluded by configuration, and the two Linux external gates
+  were explicitly ignored. This directly covers standard-library hard-link
+  publication, concurrent reuse and no-clobber behavior on NTFS; it does not
+  qualify Windows-host provider preparation or target linking. Summary
+  `producer-e857-windows-qualification.md`, SHA-256
+  `3b7d71e168dfc89583c0cd26be6725051c8f5e955e26715852fd88bdc67cbe7e`.
+- Source consumer `e3e31e44b2368ebea4a06974d931f254da4e1ac6` with that producer,
+  native x86_64 WSL/Rust 1.99.0, recorded 01:32:08–01:35:48 UTC: source-driver
+  gates passed, including 16 GNU ld 2.42 / LLD cases, host-sysroot selection,
+  old-to-new same-target-directory relinking, shell/TOML exports, commands and
+  C/CMake plus native-host-SDK/local-3.10-simulation smokes. The root-only source
+  patch retained registry kernel/scan/targets 0.3.3, glibc-abilists 0.1.2 and
+  glibc-provider-sources 0.1.1; this is not an all-five 0.4.0 registry graph or a
+  change to this repository's locked 0.1.0 upstream inputs. Archive
+  `native-e857-e3-proof.zip`, SHA-256
+  `e6fd5de1920eb1e5c408c217a898265ce9bae131b861cd1a2c429f6b98af7743`.
+  Inspection verified all 13 member hashes, the recorded source identities and
+  graph, all-five libc defaults, mixed ordinary/explicit-old `clock_gettime`,
+  and unchanged non-clock imports in all 16 comparisons. This inspection did
+  not rerun the native script. No clock-setting fixture was executed.
+
+Remaining producer release gates: independent approval of the corrected ELF/cache
+changes and evidence-only delta, applicable hosted/manual gate acceptance, and
+final corrected source-consumer qualification. The recorded consumer run is
+preliminary while its named-library-script bypass remains open; the corrected
+final native Rust 1.90 source pair is separate. Container-mode preparation and
+profile integration are not covered by that ZIP. The unchanged kernel,
+scanner/target and ordinary provider generation/container-builder code informs
+the scope of additional checks; it is not fresh execution evidence. Real-registry
+adoption and three-way consumer validation follow producer publication and remain
+separate Cargo release gates. No producer merge or publication approval is
+inferred here. Tier 3 and the authenticated-prebuilt legal deferral are unchanged.

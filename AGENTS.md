@@ -39,6 +39,12 @@ every workflow and its cargo-libc mapping; keep it in step with changes.
 - Keep ABI collection/serialization separate from linker stub generation and
   real startup objects, headers, and runtime implementations.
 - Preserve symbol versions, library identity, symbol kind, and object/TLS sizes.
+  Raw recorded evidence and ordinary provider/stub rendering remain faithful.
+  The explicitly requested `provider::link_profile::LinkProfile::LibcClocksV1` policy derives
+  a separate immutable librt copy: only the five clock default-version bits may
+  change after validating selected libc GLIBC_2.17 defaults. Never rewrite raw
+  tables, descriptors or user inputs, reorder library arguments, or silently
+  fall back when profile validation fails.
 - Providers link the compiler runtime as a generated `libgcc_s` stub with GCC
   4.8.5's interface (`src/libgcc_s-gcc-4.8.5.tsv`). Regenerate that table with
   `scripts/record-libgcc-s.sh` from the pinned CentOS 7 image; never edit it by hand.
