@@ -55,6 +55,15 @@ every workflow and its cargo-libc mapping; keep it in step with changes.
   Every mode generates the same stubs, from the release's recorded library table.
   `src/provider/build.rs` follows glibc-provider's `glibc-provider-replay`; keep the
   two in step.
+- `runtime::llvm_unwind` is an unreleased, policy-neutral pinned source archive
+  builder. Its construction profiles grant no application/default, GLIBC-floor
+  or binary distribution qualification. Keep raw/provider inputs faithful;
+  never add a host runtime/helper fallback, user-target C++ support or foreign
+  opaque-context guessing. Record actual selected roots, source/license identity,
+  tools/resources/declared support files and observed dependencies, with explicit
+  unobservable-closure limitations. Follow [the regression checklist](docs/LLVM-UNWIND.md#durable-sourceproviderruntime-regression-gate)
+  when source/provider/header/tool/profile inputs change. General mixed-runtime
+  compatibility remains blocked; no default or release decision is implied.
 - Use deterministic outputs and validate malformed inputs without panics.
 - Keep implementation dependencies minimal; start with Rust's standard library.
 - Ask about unresolved product decisions; do not claim Zig parity prematurely.

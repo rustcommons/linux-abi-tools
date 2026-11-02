@@ -19,7 +19,11 @@
 //!   cached locally in `source` or `container` mode, and described by a
 //!   descriptor that cargo-libc reads.
 //!
-//! The `libc-abi` binary exposes these as commands (`libc-abi glibc ...`,
+//! An unreleased, policy-neutral [`runtime::llvm_unwind`] API also builds an
+//! experimental pinned unwind archive. It selects no application link policy
+//! and establishes no runtime interoperability or GLIBC-floor qualification.
+//!
+//! The `libc-abi` binary exposes the metadata/provider operations as commands (`libc-abi glibc ...`,
 //! `libc-abi libgcc stub`, `libc-abi provider ...`); run `libc-abi --help`.
 //!
 //! # Features
@@ -75,6 +79,7 @@ pub mod libgcc;
 pub mod matrix;
 mod output;
 pub mod provider;
+pub mod runtime;
 mod sha256;
 pub mod stub;
 pub mod version;

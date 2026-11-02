@@ -25,7 +25,8 @@ without the maintainer's go-ahead.
 Each manifest has an `include` list, so only sources, compiled-in data,
 README, and license/notice files are packaged. `libc-abi-tools` leaves out
 `data/`, `docs/`, and `tests/`, plus examples other than the explicitly included
-provider build scripts and input manifests; its own crate is MIT. A default
+provider build scripts and input manifests; its original Rust code is MIT; the unreleased LLVM source subset retains its
+upstream licenses (see [preparation contract](LLVM-UNWIND.md)). A default
 build of it includes glibc-abilists' LGPL-2.1-or-later data; build with
 `default-features = false` to leave that out.
 
@@ -492,3 +493,16 @@ available. This producer record proves availability/identity, not completion of
 consumer installation, the final source pair or three-way registry qualification.
 The historical [cargo-libc 0.2.2 adoption record](https://github.com/rustcommons/cargo-libc/blob/1ca27da9086ebf6cf19a6f2c0e858108b38cac46/docs/RELEASE-0.2.2.md)
 retains its original scope. New Cargo adoption must be recorded by its own gates.
+
+## Unreleased LLVM archive foundation
+
+The [policy-neutral preparation API and regression checklist](LLVM-UNWIND.md)
+add a public API and selected upstream source/license payload. They do not select
+an application/default policy or authorize release. Current 0.4.0 tags/archives,
+versions and dependency locks remain unchanged. A future new-API release needs a
+minor lockstep version under existing policy, independent review and applicable
+package/license/consumer gates; no number or publication is selected here.
+Re-audit bundled source bytes/license/inventory and unresolved helper requirements
+on source/provider/header/tool/profile updates. Archive construction, runtime
+qualification and binary/SDK distribution clearance are distinct gates. General
+LLVM application interop remains blocked; tier 3 remains deferred.

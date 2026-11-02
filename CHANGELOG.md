@@ -13,6 +13,17 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+### Experimental API
+
+- Add policy-neutral offline LLVM 23.1.4 libunwind archive preparation with
+  explicit source/configuration/header/tool identity, structural archive checks
+  and immutable no-clobber cache. This does not select an application linking
+  policy or change current defaults. Mixed-runtime/forced-unwind compatibility
+  remains blocked; no compiler-rt personality/general helper fallback is supplied.
+- Bundle the selected unmodified LLVM sources and full license notices, with
+  root package license metadata reflecting those sources. No version bump,
+  publication, precompiled runtime or binary distribution approval is included.
+
 ### Documentation
 
 - Add this changelog and versioned user-facing notes for all seven existing tags;

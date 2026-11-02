@@ -184,3 +184,12 @@ its MIT notice.
 ## Provider release selection
 
 The unchanged six-field v1 descriptor now selects exactly one release from 2.17 through 2.44 (`RELEASES` in `src/provider.rs`), and cargo-libc rejects mismatched requests before building. The source-built profiles contain 2921 (2.18–2.21) to 4315 (2.44) public definitions across eight generated DSOs, including the 2.34 merger, after which libpthread, libdl, librt and libutil are small placeholders; before 2.28 the provider also links `libpthread_nonshared.a`, which 2.28 merged into `libc_nonshared.a`. Existing 2.17 descriptors and both input routes remain valid. Shared validation scripts select the release explicitly, including pthread default-attribute, sigvec default-removal, and fmemopen version boundaries, compatibility-only rejection, and matrix-selected Cargo newer-symbol rejection tests. See the [provider index](PROVIDERS.md) and the per-release documents it links; actual distribution qualification remains separate.
+
+## Unreleased runtime archive preparation boundary
+
+The independent [LLVM preparation API](LLVM-UNWIND.md) snapshots selected header,
+library and tool identities and builds a pinned source archive into a no-clobber
+cache. It does not feed an automatic executable link path, alter descriptor v1
+or replace recorded libgcc stubs. Construction profiles are explicit visibility
+configurations, not interposition policies. Native mixed-runtime failures remain
+unresolved; see LAT-REQ-031 and the [research checkpoint](LLVM-UNWIND.md#2026-11-02-research-checkpoint).
