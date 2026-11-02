@@ -297,7 +297,7 @@ fn snapshot(o: &PrepareOptions, work: &Path) -> Result<Snapshot, String> {
     real_dir(&o.sysroot)?;
     let headers = Tree::load(&o.sysroot.join("usr/include"))?;
     for name in ["features.h", "stdint.h", "stdlib.h", "pthread.h", "dlfcn.h"] {
-        if !headers.0.contains_key(name) {
+        if !headers.0.contains_key(Path::new(name)) {
             return Err(format!("selected headers lack {name}"));
         }
     }

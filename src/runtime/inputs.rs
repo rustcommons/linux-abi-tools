@@ -1,8 +1,8 @@
 use crate::sha256;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs,
-    io::Read,
+    io::{Read, Write},
     path::{Component, Path, PathBuf},
 };
 
@@ -64,8 +64,69 @@ pub(super) fn tool(path: &Path) -> Result<PathBuf, String> {
     file_identity(&p)?;
     Ok(p)
 }
+// Validate native components without separator replacement, lexical folding or
+// lossy Unicode conversion. Reject non-canonical spelling as well as traversal.
+fn relative_key(path: &Path) -> Result<(), String> {
+    if path.as_os_str().is_empty() {
+        return Err("empty snapshot key".into());
+    }
+    let mut rebuilt = PathBuf::new();
+    for part in path.components() {
+        match part {
+            Component::Normal(name) => {
+                name.to_str().ok_or("snapshot name not UTF-8")?;
+                rebuilt.push(name);
+            }
+            _ => return Err("snapshot key must contain only relative normal components".into()),
+        }
+    }
+    if rebuilt.as_os_str() != path.as_os_str() {
+        return Err("noncanonical snapshot key".into());
+    }
+    Ok(())
+}
+fn destination_root(path: &Path) -> Result<(), String> {
+    if !path.is_absolute() {
+        return Err("snapshot destination must be absolute".into());
+    }
+    let mut rebuilt = PathBuf::new();
+    for part in path.components() {
+        if matches!(part, Component::ParentDir | Component::CurDir) {
+            return Err("snapshot destination must be normalized".into());
+        }
+        rebuilt.push(part);
+    }
+    if rebuilt.as_os_str() != path.as_os_str() {
+        return Err("noncanonical snapshot root".into());
+    }
+    Ok(())
+}
+fn create_directories(path: &Path) -> Result<(), String> {
+    if !path.is_absolute() {
+        return Err("snapshot root must be absolute".into());
+    }
+    let mut current = PathBuf::new();
+    for part in path.components() {
+        if matches!(part, Component::ParentDir | Component::CurDir) {
+            return Err("snapshot destination must be normalized".into());
+        }
+        current.push(part);
+        match fs::create_dir(&current) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(e) => return Err(e.to_string()),
+        }
+        if !fs::symlink_metadata(&current)
+            .map_err(|e| e.to_string())?
+            .is_dir()
+        {
+            return Err("snapshot destination directory must not be a symlink/file".into());
+        }
+    }
+    Ok(())
+}
 #[derive(Clone)]
-pub(super) struct Tree(pub BTreeMap<String, Vec<u8>>);
+pub(super) struct Tree(pub BTreeMap<PathBuf, Vec<u8>>);
 impl Tree {
     pub fn load(root: &Path) -> Result<Self, String> {
         real_dir(root)?;
@@ -74,7 +135,7 @@ impl Tree {
         fn visit(
             root: &Path,
             dir: &Path,
-            map: &mut BTreeMap<String, Vec<u8>>,
+            map: &mut BTreeMap<PathBuf, Vec<u8>>,
             total: &mut usize,
             depth: usize,
         ) -> Result<(), String> {
@@ -91,9 +152,8 @@ impl Tree {
                     let rel = path
                         .strip_prefix(root)
                         .map_err(|e| e.to_string())?
-                        .to_str()
-                        .ok_or("header name not UTF-8")?
-                        .replace('\\', "/");
+                        .to_path_buf();
+                    relative_key(&rel)?;
                     if map.len() >= 10000 {
                         return Err("header tree exceeds 10000 files".into());
                     }
@@ -102,7 +162,9 @@ impl Tree {
                     if *total > 64 * 1024 * 1024 {
                         return Err("header tree exceeds 64 MiB".into());
                     }
-                    map.insert(rel, data);
+                    if map.insert(rel, data).is_some() {
+                        return Err("duplicate native snapshot key".into());
+                    }
                 } else {
                     return Err(
                         "header trees require regular files/directories, no symlinks".into(),
@@ -118,18 +180,48 @@ impl Tree {
         Ok(Self(map))
     }
     pub fn identity(&self) -> String {
-        let mut data = String::new();
-        for (p, b) in &self.0 {
-            data.push_str(&format!("{}:{}:{}\n", p.len(), p, hash(b)));
+        // Native component bytes are length-prefixed; literal Unix backslashes
+        // remain filename bytes and can never become separators during replay.
+        let mut data = b"header-tree-native-components-v1\n".to_vec();
+        for (path, bytes) in &self.0 {
+            for component in path.components() {
+                let b = component.as_os_str().as_encoded_bytes();
+                data.extend_from_slice(format!("{}:", b.len()).as_bytes());
+                data.extend_from_slice(b);
+            }
+            data.extend_from_slice(format!("={}:{}\n", bytes.len(), hash(bytes)).as_bytes());
         }
-        hash(data.as_bytes())
+        hash(&data)
     }
     pub fn write(&self, root: &Path) -> Result<(), String> {
-        fs::create_dir_all(root).map_err(|e| e.to_string())?;
-        for (p, b) in &self.0 {
-            let p = root.join(p);
-            fs::create_dir_all(p.parent().ok_or("missing parent")?).map_err(|e| e.to_string())?;
-            fs::write(p, b).map_err(|e| e.to_string())?;
+        destination_root(root)?;
+        // Preflight the complete inventory before creating even the root. Never
+        // normalize an input key or overwrite a colliding destination.
+        let mut seen = BTreeSet::new();
+        for path in self.0.keys() {
+            relative_key(path)?;
+            let dest = root.join(path);
+            if !dest.starts_with(root) || !seen.insert(dest) {
+                return Err("snapshot destination collision/escape".into());
+            }
+            for parent in path.ancestors().skip(1) {
+                if self.0.contains_key(parent) {
+                    return Err("snapshot file/directory collision".into());
+                }
+            }
+        }
+        create_directories(root)?;
+        for (path, bytes) in &self.0 {
+            let dest = root.join(path);
+            let parent = dest.parent().ok_or("snapshot parent")?;
+            create_directories(parent)?;
+            // Existing regular files, case-fold aliases and symlinks all refuse.
+            fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&dest)
+                .and_then(|mut f| f.write_all(bytes))
+                .map_err(|e| format!("{}: {e}", dest.display()))?;
         }
         Ok(())
     }
@@ -209,6 +301,132 @@ mod tests {
         fs::remove_file(p.join("alias")).unwrap();
         std::os::unix::fs::symlink(&p, p.join("loop")).unwrap();
         assert!(real_dir(&p.join("loop")).is_err());
+        fs::remove_dir_all(p).unwrap();
+    }
+    #[cfg(unix)]
+    #[test]
+    fn unix_backslashes_preserve_native_names_in_header_and_resource_staging() {
+        let p = temp();
+        let input = p.join("input");
+        fs::create_dir(&input).unwrap();
+        fs::create_dir(input.join("a")).unwrap();
+        for (name, bytes) in [
+            (r"..\escaped.h", b"literal traversal spelling".as_slice()),
+            (r"a\b.h", b"literal backslash".as_slice()),
+            ("a/b.h", b"real separator".as_slice()),
+            (r"\leading.h", b"literal leading backslash".as_slice()),
+            (r"C:\drive.h", b"literal Unix drive spelling".as_slice()),
+        ] {
+            fs::write(input.join(name), bytes).unwrap();
+        }
+        let tree = Tree::load(&input).unwrap();
+        assert_eq!(tree.0.len(), 5);
+        assert!(tree.0.contains_key(Path::new(r"..\escaped.h")));
+        let before = tree.identity();
+        for dest in [p.join("headers/usr/include"), p.join("resources/include")] {
+            tree.write(&dest).unwrap();
+            assert_eq!(Tree::load(&dest).unwrap().identity(), before);
+            assert_eq!(
+                fs::read(dest.join(r"..\escaped.h")).unwrap(),
+                b"literal traversal spelling"
+            );
+            assert_eq!(fs::read(dest.join(r"a\b.h")).unwrap(), b"literal backslash");
+            assert_eq!(fs::read(dest.join("a/b.h")).unwrap(), b"real separator");
+            assert!(!dest.parent().unwrap().join("escaped.h").exists());
+        }
+        assert!(!p.join("escaped.h").exists());
+        assert_eq!(Tree::load(&input).unwrap().identity(), before);
+        fs::remove_dir_all(p).unwrap();
+    }
+    #[test]
+    fn forged_traversal_absolute_and_normalized_keys_refuse_before_writes() {
+        let p = temp();
+        let absolute = p.join("absolute-escape.h");
+        let mut bad = vec![
+            PathBuf::new(),
+            PathBuf::from("."),
+            PathBuf::from(".."),
+            PathBuf::from("../escape.h"),
+            PathBuf::from("a/../../escape.h"),
+            PathBuf::from("a/./b.h"),
+            PathBuf::from("a//b.h"),
+            PathBuf::from("a/"),
+            absolute.clone(),
+        ];
+        #[cfg(windows)]
+        bad.extend([
+            PathBuf::from(r"..\escape.h"),
+            PathBuf::from(r"C:\absolute.h"),
+            PathBuf::from(r"C:relative.h"),
+            PathBuf::from(r"\\server\share\file.h"),
+            PathBuf::from(r"\rooted.h"),
+        ]);
+        for (i, key) in bad.drain(..).enumerate() {
+            let tree = Tree(BTreeMap::from([(key, b"must not write".to_vec())]));
+            for kind in ["headers", "resources"] {
+                let root = p.join(format!("{kind}-{i}"));
+                assert!(tree.write(&root).is_err());
+                assert!(!root.exists());
+            }
+        }
+        let mixed = Tree(BTreeMap::from([
+            (PathBuf::from("safe.h"), b"valid first".to_vec()),
+            (PathBuf::from("z/../../escape.h"), b"invalid later".to_vec()),
+        ]));
+        let root = p.join("mixed");
+        assert!(mixed.write(&root).is_err());
+        assert!(!root.exists());
+        assert!(!absolute.exists());
+        assert_eq!(fs::read_dir(&p).unwrap().count(), 0);
+        fs::remove_dir_all(p).unwrap();
+    }
+    #[test]
+    fn file_directory_collisions_and_existing_destinations_never_overwrite() {
+        let p = temp();
+        let collision = Tree(BTreeMap::from([
+            (PathBuf::from("a"), b"file".to_vec()),
+            (PathBuf::from("a").join("b"), b"child".to_vec()),
+        ]));
+        let root = p.join("collision");
+        assert!(collision.write(&root).is_err());
+        assert!(!root.exists());
+        let root = p.join("existing");
+        fs::create_dir(&root).unwrap();
+        fs::write(root.join("header.h"), b"keep").unwrap();
+        let tree = Tree(BTreeMap::from([(
+            PathBuf::from("header.h"),
+            b"replace".to_vec(),
+        )]));
+        assert!(tree.write(&root).is_err());
+        assert_eq!(fs::read(root.join("header.h")).unwrap(), b"keep");
+        let badroot = p.join("new").join("..").join("escape");
+        assert!(tree.write(&badroot).is_err());
+        assert!(!p.join("new").exists());
+        fs::remove_dir_all(p).unwrap();
+    }
+    #[cfg(unix)]
+    #[test]
+    fn destination_symlinks_refuse_without_following_or_mutating_source() {
+        let p = temp();
+        let outside = p.join("outside");
+        let root = p.join("snapshot");
+        fs::create_dir(&outside).unwrap();
+        fs::create_dir(&root).unwrap();
+        fs::write(outside.join("sentinel.h"), b"keep").unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("dir")).unwrap();
+        let tree = Tree(BTreeMap::from([(
+            PathBuf::from("dir").join("escape.h"),
+            b"bad".to_vec(),
+        )]));
+        assert!(tree.write(&root).is_err());
+        assert!(!outside.join("escape.h").exists());
+        std::os::unix::fs::symlink(outside.join("sentinel.h"), root.join("alias.h")).unwrap();
+        let tree = Tree(BTreeMap::from([(
+            PathBuf::from("alias.h"),
+            b"bad".to_vec(),
+        )]));
+        assert!(tree.write(&root).is_err());
+        assert_eq!(fs::read(outside.join("sentinel.h")).unwrap(), b"keep");
         fs::remove_dir_all(p).unwrap();
     }
 }

@@ -116,8 +116,8 @@ descriptor v1). The hard-linked content-key index contains:
 
 Large tool/support/provider-file `content_identity` values are **not** raw-file
 SHA256: `runtime-file-chunks-v1` hashes a domain-separated sequence of fixed 1 MiB
-chunk SHA256s/lengths and total byte count. Header tree identities hash sorted
-relative names and per-file SHA256s. Sources, archive and object hashes are
+chunk SHA256s/lengths and total byte count. Header tree identities hash sorted native path components (length-prefixed
+component bytes) and per-file SHA256s; no Unix backslash-to-separator conversion occurs. Sources, archive and object hashes are
 conventional SHA256. Bounds: 10,000 files/64 MiB per header tree, 8 MiB per tree
 file/object, 1 GiB per tool identity file, 32 MiB archive, 64 KiB manifest and
 16 MiB aggregate build log. Oversized inputs refuse explicitly.
@@ -243,3 +243,44 @@ The authored-file whitespace check passes. Two inherited extra EOF blank lines
 in upstream `include/mach-o/compact_unwind_encoding.h` and `src/libunwind.cpp`
 remain byte-identical to LLVM; the all-file diff check reports those two notices.
 They are not normalized or patched to conceal source changes.
+
+### Containment correction after c7a3d2d review
+
+Independent review marked `c7a3d2d` **NO-GO**: a legal Unix filename literally
+`..\escaped.h` became `../escaped.h` in a string-key normalization and wrote
+outside the header/resource snapshot before depfile checks. The exact transferred
+repro kit SHA256 is
+`d59bc6e0fbd1d90f141be314e5bf300b64486baf4889cf0efd9d233f2b41e88a`.
+The unchanged original probe reproduced the failure inside a fresh bounded
+artifact directory; its original source and failed containment result are retained.
+Earlier package/test successes did not cover or qualify that filename handling.
+
+The correction preserves native `PathBuf` components without separator replacement,
+rejects non-relative/non-normalized keys and duplicate insertion, preflights the
+complete destination inventory before directory creation, checks destination
+containment/directories, and creates files with create-new semantics. Existing
+files, symlinks and file/directory aliases are refused without overwrite. A literal
+Unix backslash remains a literal filename character, not a path separator. Native
+key encoding changes the input/cache identity; old producer entries are not repaired.
+
+Focused regression coverage exercises both header and resource staging, Unix
+backslash/leading-backslash/drive-looking names, actual nested paths, forged parent/
+absolute/noncanonical components, file/directory collisions, preexisting files and
+destination symlinks, with unchanged original source bytes and no escaping writes.
+Windows prefix/root/UNC cases are included conditionally; native Windows execution
+of this new preparation API remains unqualified. The corrected standalone probe
+changes only the expected outcome, compiling the current module with Rust 1.90.
+These checks address the reproduced defect, not general runtime interoperability.
+
+The independent reviewer verified the c7 source/license inventory and transferred
+logs. The c7 package checksum/file count remained owner evidence because its crate
+bytes were not in that packet. A corrected exact-ref source archive is included
+with the new handoff so independent package hashing can close that separate gap.
+No receipt validation, lifecycle invalidation, full-sysroot staging, contained-link
+support, application binding policy or default is implemented by this correction.
+
+Correction validation, 2026-11-02: 15 focused Rust 1.90 runtime-module tests pass,
+including six input/staging tests; root all-target Clippy and fmt pass. The selected
+Clang 16 archive/cache gate passes after native-path changes (both construction
+profiles, concurrent writers and replay); no full Rust/native/runtime matrix was
+rerun. Narrow independent review remains required before preparation integration.
