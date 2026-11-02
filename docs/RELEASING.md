@@ -233,3 +233,21 @@ Exact old-ref reproductions remain historical evidence; corrected probes account
 for the new generation manifest field and intercept hard-link publication rather
 than rename. Independent re-review and exact-source consumer/native qualification
 remain required before any publication.
+
+
+Corrected producer source `e857e43f113fd5fb02d0f2afff58b90fcfbd1ee6` passed the
+producer-local gates on 2026-11-02 (aarch64 Linux host, x86_64 cross-link targets):
+127 workspace/all-targets tests, six doctests, 57 no-default tests; fmt; Rust
+1.90 workspace/all-targets check; workspace/default and root/no-default clippy;
+warning-denied all-feature workspace docs; five-package workspace packaging and
+archive audit with clean VCS identity. Focused evidence comprises 12 ELF/cache
+integration tests plus two publication unit tests, the separately invoked
+28-release/32-link gate and real Debian 2.28 DSO gate described above. Both
+independent reviewer reproducers were rerun: the original blocked source still
+reproduces its two failures; corrected-source assertions require partial-map
+refusal and an unchanged racing empty index. Only the internal generation field,
+hard-link hook and expected fixed outcomes changed in the probe harnesses.
+
+This is bounded producer preparation evidence. Hosted checks, independent GO and
+full consumer/native qualification remain pending; no registry adoption,
+publication or runtime compatibility is established by these local checks.
