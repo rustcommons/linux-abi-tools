@@ -618,7 +618,7 @@ fn profile_tables(bytes: &[u8]) -> Result<(Section, Section, Vec<Section>), Stri
                 return Err("invalid loader segment extent or alignment".into());
             }
             r.slice(offset, size)?;
-            loads.push((offset, address, size));
+            loads.push((offset, address, size, memory_size));
         }
         if kind == 2 {
             dynamic_count += 1;
@@ -635,16 +635,74 @@ fn profile_tables(bytes: &[u8]) -> Result<(Section, Section, Vec<Section>), Stri
         return Err("dynamic section does not match loader segment".into());
     }
     for section in [sym, names, versym, verdef, dynamic] {
+        let end = section
+            .address
+            .checked_add(section.size)
+            .ok_or("table address overflow")?;
         let mut mapped = false;
-        for &(offset, address, size) in &loads {
-            if let Some(delta) = section.address.checked_sub(address) {
-                if delta <= size && section.size <= size - delta {
-                    let at = offset.checked_add(delta).ok_or("load mapping overflow")?;
-                    if at != section.offset {
-                        return Err("conflicting loader table mapping".into());
-                    }
-                    mapped = true;
+        for &(offset, address, size, memory_size) in &loads {
+            let file_end = address.checked_add(size).ok_or("load address overflow")?;
+            let memory_end = address
+                .checked_add(memory_size)
+                .ok_or("load address overflow")?;
+            // A file tail followed by BSS is zeroed through the last page,
+            // including bytes beyond the segment's logical memory end.
+            if memory_size > size {
+                let zero_end = memory_end
+                    .checked_add(4095)
+                    .ok_or("load zero-fill overflow")?
+                    / 4096
+                    * 4096;
+                if file_end < end && section.address < zero_end {
+                    return Err("loader zero-fill page shadows ELF table".into());
                 }
+            }
+            let start = section.address.max(address);
+            let overlap_end = end.min(memory_end);
+            if start < overlap_end {
+                if overlap_end > file_end {
+                    return Err("loader zero-fill shadows ELF table".into());
+                }
+                let actual = offset
+                    .checked_add(start - address)
+                    .ok_or("load mapping overflow")?;
+                let expected = section
+                    .offset
+                    .checked_add(start - section.address)
+                    .ok_or("table mapping overflow")?;
+                if actual != expected {
+                    return Err("conflicting partial loader table mapping".into());
+                }
+            }
+            // x86_64 Linux maps PT_LOAD file pages at 4 KiB granularity. A
+            // neighboring partial segment can shadow a table in the same page.
+            if size != 0 {
+                const PAGE: u64 = 4096;
+                if offset % PAGE != address % PAGE {
+                    return Err("invalid loader page alignment".into());
+                }
+                let page_start = address / PAGE * PAGE;
+                let page_end =
+                    file_end.checked_add(PAGE - 1).ok_or("load page overflow")? / PAGE * PAGE;
+                let page_offset = offset
+                    .checked_sub(address % PAGE)
+                    .ok_or("load page offset overflow")?;
+                let start = section.address.max(page_start);
+                if start < end.min(page_end) {
+                    let actual = page_offset
+                        .checked_add(start - page_start)
+                        .ok_or("load page mapping overflow")?;
+                    let expected = section
+                        .offset
+                        .checked_add(start - section.address)
+                        .ok_or("table mapping overflow")?;
+                    if actual != expected {
+                        return Err("conflicting loader page shadows ELF table".into());
+                    }
+                }
+            }
+            if address <= section.address && end <= file_end {
+                mapped = true;
             }
         }
         if !mapped {

@@ -219,3 +219,17 @@ The coordinator alone publishes and confirms all five before any new tag.
 Tier 3 remains deferred, not an ordinary-release blocker; authenticated prebuilt
 delivery remains deferred pending legal review. Cache verification is local
 content integrity, not producer authentication.
+
+
+The 2026-11-02 independent review rejected producer source `1b3b51c8afad88e05b0dc238c15f5ee879f94184`:
+a conflicting partial PT_LOAD could evade table validation, and directory rename
+could replace a concurrently created empty cache entry. That source is blocked;
+its earlier passing owner checks do not qualify a corrected source. The revised
+implementation checks partial and 4 KiB load-page shadows, retaining consistent
+aliases, and publishes complete private generations with a no-clobber hard-linked
+manifest index. Tests cover racing empty destinations, winner persistence, loser
+cleanup, invalid generation names and ignored unindexed partial generations.
+Exact old-ref reproductions remain historical evidence; corrected probes account
+for the new generation manifest field and intercept hard-link publication rather
+than rename. Independent re-review and exact-source consumer/native qualification
+remain required before any publication.

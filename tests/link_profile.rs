@@ -155,7 +155,7 @@ fn concurrent_writers_reuse_one_complete_entry() {
     });
     assert!(results.iter().all(|r| r == &results[0]));
     let parent = results[0].search_dir.as_ref().unwrap().parent().unwrap();
-    assert_eq!(fs::read_dir(parent).unwrap().count(), 1);
+    assert_eq!(fs::read_dir(parent).unwrap().count(), 2);
 }
 
 /// Qualified recorded providers and external linkers are intentionally supplied
@@ -409,4 +409,128 @@ fn refuses_loader_memory_extent_and_alignment_mismatches() {
         assert!(t.prepare().unwrap_err().contains("loader segment"));
     }
     assert!(!t.0.join("cache").exists());
+}
+
+fn extra_load(
+    input: &[u8],
+    address: u64,
+    offset: u64,
+    file_size: u64,
+    memory_size: u64,
+) -> Vec<u8> {
+    let mut bytes = input.to_vec();
+    let phoff = u64_at(input, 32) as usize;
+    let count = u16::from_le_bytes(input[56..58].try_into().unwrap()) as usize;
+    let slot = (0..count)
+        .map(|i| phoff + i * 56)
+        .find(|&p| u32::from_le_bytes(input[p..p + 4].try_into().unwrap()) == 0x6474e551)
+        .unwrap();
+    bytes[slot..slot + 56].fill(0);
+    bytes[slot..slot + 4].copy_from_slice(&1u32.to_le_bytes());
+    bytes[slot + 4..slot + 8].copy_from_slice(&4u32.to_le_bytes());
+    for (field, value) in [
+        (8, offset),
+        (16, address),
+        (24, address),
+        (32, file_size),
+        (40, memory_size),
+        (48, 4096),
+    ] {
+        bytes[slot + field..slot + field + 8].copy_from_slice(&value.to_le_bytes());
+    }
+    bytes
+}
+#[test]
+fn rejects_partial_and_page_shadow_mappings_but_accepts_consistent_aliases() {
+    let t = Temp::new();
+    t.inputs();
+    for (filename, input) in [("c", C), ("rt", RT)] {
+        for kind in [11, 3, 0x6fffffff, 0x6ffffffd, 6] {
+            let table = section(input, kind);
+            let address = u64_at(input, table + 16);
+            let offset = u64_at(input, table + 24);
+            let size = u64_at(input, table + 32);
+            // The exact reviewer fixture maps versym+2 to file offset+4096.
+            let bad = extra_load(input, address + 2, offset + 2 + 4096, 2, 2);
+            fs::write(t.0.join(filename), bad).unwrap();
+            assert!(t.prepare().is_err(), "partial {filename} {kind:x}");
+            // A non-intersecting logical segment shadows the same loader page.
+            let bad = extra_load(input, address + size + 2, offset + size + 2 + 4096, 1, 1);
+            fs::write(t.0.join(filename), bad).unwrap();
+            assert!(t.prepare().is_err(), "page {filename} {kind:x}");
+            // A zero-fill range must never replace a table's file contents.
+            let bad = extra_load(input, address + 2, offset + 2, 0, 2);
+            fs::write(t.0.join(filename), bad).unwrap();
+            assert!(t.prepare().is_err(), "bss {filename} {kind:x}");
+            // Tail-page zeroing can shadow a table even after the logical
+            // memory extent has ended, despite identical file-page mapping.
+            let bad = extra_load(input, address - 8, offset - 8, 1, 2);
+            fs::write(t.0.join(filename), bad).unwrap();
+            assert!(t.prepare().is_err(), "zero tail {filename} {kind:x}");
+            fs::write(t.0.join(filename), input).unwrap();
+        }
+    }
+    assert!(!t.0.join("cache").exists());
+    let vs = section(RT, 0x6fffffff);
+    let address = u64_at(RT, vs + 16);
+    let offset = u64_at(RT, vs + 24);
+    fs::write(
+        t.0.join("rt"),
+        extra_load(RT, address + 2, offset + 2, 2, 2),
+    )
+    .unwrap();
+    assert!(t.prepare().unwrap().search_dir.is_some());
+}
+#[test]
+fn only_indexed_generations_are_used_and_empty_index_is_never_repaired() {
+    let t = Temp::new();
+    t.inputs();
+    let parent = t.0.join("cache/clock-link-profiles/libc-clocks-v1");
+    let orphan = parent.join(".gen-0-0");
+    fs::create_dir_all(&orphan).unwrap();
+    fs::write(orphan.join("partial"), b"untouched").unwrap();
+    let dir = t.prepare().unwrap().search_dir.unwrap();
+    assert_ne!(dir, orphan);
+    assert_eq!(fs::read(orphan.join("partial")).unwrap(), b"untouched");
+    let index = fs::read_dir(&parent)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .find(|p| p.is_file())
+        .unwrap();
+    fs::remove_file(&index).unwrap();
+    fs::create_dir(&index).unwrap();
+    assert!(t
+        .prepare()
+        .unwrap_err()
+        .contains("index must be a regular file"));
+    assert!(index.is_dir());
+    assert_eq!(fs::read_dir(index).unwrap().count(), 0);
+    assert!(dir.is_dir());
+}
+#[test]
+fn index_generation_name_must_be_a_safe_single_component() {
+    let t = Temp::new();
+    t.inputs();
+    let dir = t.prepare().unwrap().search_dir.unwrap();
+    let parent = dir.parent().unwrap();
+    let index = fs::read_dir(parent)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .find(|p| p.is_file())
+        .unwrap();
+    let text = fs::read_to_string(&index).unwrap();
+    let name = dir.file_name().unwrap().to_str().unwrap();
+    for bad in [
+        "../escape",
+        "/absolute",
+        ".gen-1-../escape",
+        ".gen-1-1/child",
+        ".gen-1-1\\child",
+        ".",
+        "..",
+        "C:escape",
+    ] {
+        fs::write(&index, text.replace(name, bad)).unwrap();
+        assert!(t.prepare().is_err(), "{bad}");
+    }
 }

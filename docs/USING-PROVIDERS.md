@@ -152,8 +152,15 @@ LinkProfile::LibcClocksV1)` to validate the inputs and derive the overlay.
 `LinkProfile::id()` is `"libc-clocks-v1"`. `Overlay` returns the two original
 SHA-256s, the profile and an optional `search_dir`. A nonempty directory contains
 regular `librt.so` and `librt.so.1` copies plus `manifest.json`. Its identity binds
-both input contents and the policy. Entries are staged then renamed into place;
-existing entries are fully checked, never repaired or overwritten. The local
+both input contents and the policy. A complete private generation is published by
+atomically hard-linking its manifest to a content-key index file, with no replace
+semantics. The manifest includes a validated single-component generation name,
+policy, both raw hashes and the overlay hash. Readers follow only that index and
+verify the complete generation. Existing index files or directories are never
+repaired or overwritten, including if they appear during publication. Losing
+writers verify the published winner and clean up only their own unpublished
+generation. Unindexed partial generations are ignored. The cache filesystem must support
+ordinary same-filesystem hard links; unsupported publication returns an error. The local
 cache root must be controlled by the caller; this is not authenticated delivery
 or a promise of crash-durable filesystem transactions.
 
