@@ -105,7 +105,9 @@ every workflow and its cargo-libc mapping; keep it in step with changes.
   `libc-abi-tools` on `glibc-abilists` and `glibc-provider-sources` (default
   `provider-sources` feature; published on crates.io), and
   `linux-abi-tools` on the other four.
-- Releases go to crates.io only (see [docs/RELEASING.md](docs/RELEASING.md)).
+- Distribution packages go to crates.io only; GitHub Releases carry reviewed
+  notes and source/registry links without standalone binary attachments
+  (see [docs/RELEASING.md](docs/RELEASING.md)).
   Keep each manifest's `include` list minimal. The glibc ABI lists
   (LGPL-2.1-or-later) are published only in `glibc-abilists`, which must be
   released before `libc-abi-tools`.
@@ -135,6 +137,15 @@ oldest-target runtime qualification on a real kernel.
 - Keep the README focused on purpose, prerequisites, setup, and guide links. Keep detailed workflows in maintained guides, future work in the roadmap, and dated release or validation evidence identifiable as historical records.
 - Update affected requirements, documentation, and trace links together when behavior, scope, interfaces, prerequisites, or validation changes. Use exact versions or revisions for release evidence, and do not rewrite historical outcomes or treat repository edits as changes to an immutable published package.
 - Validate documentation changes with source and command checks, links, rendering, and a clean diff. Run additional builds or tests only when changed examples, package contents, or behavior require them.
+
+## Release documentation
+
+- For a repository that ships versioned software, maintain a root `CHANGELOG.md` with an `Unreleased` section and dated, user-facing entries for shipped versions. Record noteworthy changes and their user impact as work is completed; do not substitute a roadmap, Git tag, CI log or validation report for a changelog.
+- Before publishing a version, commit its release notes under `docs/releases/vX.Y.Z.md` and link them, the changelog, and the maintained release policy. Explain changes, upgrade or dependency impact, validation and known limits; distinguish software changes from documentation-only releases.
+- A software release is not complete until its immutable source tag, applicable registry archives, GitHub Release notes, changelog, documentation, and required verification agree. GitHub Releases document the release; do not attach standalone binaries or other new distribution artifacts without authorization.
+- Run the repository's release-documentation CI check before routine merges and release completion. For its first installation, review local checker/syntax evidence, register the workflow on the default branch, and require a green run before completing bootstrap or publishing notes. Verify the live GitHub Release and its tag, text and links after publication; a successful crate upload or tag alone is insufficient.
+- When backfilling history, reconstruct facts from existing tags, registry records and source/evidence. Preserve original source identities, distinguish original release dates from documentation backfill dates, and state unavailable historical validation. Never fabricate checks, move tags, republish versions, or imply that repository edits change immutable published archives.
+- For an organization profile, placeholder or project with no shipped version, record release verification as not applicable until its first authorized release. Do not invent versions, features, changelog history or GitHub Releases to satisfy this convention.
 
 ## Git conventions
 

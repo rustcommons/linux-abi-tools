@@ -9,8 +9,9 @@ The [0.3.2 qualification record](RELEASE-CANDIDATE-0.3.2.md) remains historical.
 
 The workspace publishes five crates to **crates.io only**, after
 [glibc-abilists](https://github.com/rustcommons/glibc-abilists), which holds the
-glibc ABI lists and is released from its own repository first. No standalone
-binary bundles or GitHub release assets are published. Nothing is published
+glibc ABI lists and is released from its own repository first. GitHub Releases document each existing source tag with reviewed release notes
+and source/registry links. No standalone binary bundles or additional release
+attachments are distributed. Nothing is published
 without the maintainer's go-ahead.
 
 | Crate | Depends on | Contains |
@@ -119,37 +120,111 @@ cargo-libc releases, follow its maintained
 [release policy](https://github.com/rustcommons/cargo-libc/blob/main/docs/RELEASING.md)
 rather than duplicating its policy here.
 
+## Changelog and release notes
+
+Maintain the root [CHANGELOG.md](../CHANGELOG.md) with `Unreleased` and dated
+entries describing user impact, plus [versioned notes](releases/v0.4.0.md) at
+`docs/releases/vX.Y.Z.md`. Each note has **Changes**, **Upgrade**, **Validation and
+limits**, and **Links**. State the original source/tag, UTC registry-publication
+date, package availability and exact validation scope. Proposals stay in
+`Unreleased` or the roadmap, outside shipped-version changes.
+
+A release is complete only when its source tag, applicable registry archives,
+GitHub Release notes, changelog, documentation and verification agree. A tag or
+crate upload alone does not meet that documentation-completion rule. The
+[GitHub Releases index](https://github.com/rustcommons/linux-abi-tools/releases)
+was empty in the 2026-11-02 history audit: all seven source tags and all 35
+crate-version archives existed, but GitHub note publication was missing. This
+backfill requires no new crate version, tag, archive or binary.
+
+Older notes were reconstructed from exact tag/source diffs, registry metadata and
+existing records. All 35 downloaded archives matched their registry checksums
+and clean VCS tag commits on 2026-11-02. The 0.1.0–0.3.1 notes identify the missing
+consolidated final-tag validation bundles and preserve the narrower historical
+records. Later 0.3.2–0.4.0 qualification records keep their original scope.
+No historical test run is inferred or fabricated from current source or a
+configured workflow. The original dates in the changelog/notes are registry
+publication dates; GitHub's new publication dates will be the actual backfill
+dates. Backfilled documents did not exist at old source tags: use absolute `main`
+or documentation-commit links, never `blob/vOLD/CHANGELOG.md`. Every release-body
+link must be absolute, so it resolves on GitHub Releases too.
+
+## Release-documentation gate and first-install bootstrap
+
+Python 3.11+ and its standard library are sufficient; no project dependency is
+added. Run the committed local gate:
+
+```sh
+python3 scripts/check-release-docs.py --repo rustcommons/linux-abi-tools
+```
+
+Routine merges require the registered [release-documentation workflow](../.github/workflows/release-docs.yml)
+to pass. Its first installation is a bootstrap exception: independently review
+local checker, link/render/diff and workflow syntax evidence; normal-merge the
+reviewed installation to register it on the default branch; then require a green
+workflow run before bootstrap completion or any GitHub Release publication.
+There is no claimed candidate hosted pass before registration. Run it after merge:
+
+```sh
+gh workflow run release-docs.yml --ref main
+```
+
+The release-event path checks historical tag notes using default-branch docs,
+because old tags predate this backfill. After all existing-tag notes are
+published, verify the exact live bodies and current stable latest marker:
+
+```sh
+python3 scripts/check-release-docs.py --repo rustcommons/linux-abi-tools --published
+gh workflow run release-docs.yml --ref main -f verify_published=true
+```
+
+`--published-tag vX.Y.Z` verifies one live release event. The local gate does not
+query the network; neither checker mode publishes anything. Keep the shared
+checker/workflow byte-identical to the reviewed shared versions. Markdown/CI-only
+changes need these documentation checks, not unrelated full Rust/provider suites.
+
 ## Cutting a release
 
-1. Set the same `version` in the five manifests and in the internal
-   dependency requirements (`version = "X.Y.Z"` next to each `path`). Run
-   `cargo check --workspace` to update `Cargo.lock`.
-2. Run the full validation from [AGENTS.md](../AGENTS.md). Kernel changes also
-   require `crates/kernel-abi-tools/scripts/self-test.sh` with both `local` and
-   a container image.
-3. Dry run: `cargo package --workspace --locked`. Cargo packages all five
-   crates and builds each from its packaged sources against a temporary
-   registry that holds the others. Inspect the file lists with
-   `cargo package --list -p <crate>`.
-4. With CI green on the commit, publish in dependency order:
+1. For an authorized new software version, synchronize the five manifests,
+   internal dependency requirements and lock as described by the versioning
+   policy. Move completed user-visible `Unreleased` changes into its dated
+   changelog entry and commit `docs/releases/vX.Y.Z.md` before publication.
+2. Run applicable validation from [AGENTS.md](../AGENTS.md), including the local
+   release-documentation gate and registered CI. Kernel code/profile changes
+   also need the local/container self-tests. Data, provenance/license and provider
+   gates retain their scope. Documentation backfill does not rerun these suites.
+3. For new crate publication, run `cargo package --workspace --locked`, inspect
+   all five archives/allowlists/licenses and VCS identity, and validate on the
+   exact approved source. Existing published versions are immutable; skip crate
+   publishing entirely when backfilling documentation.
+4. With required gates and explicit approval, publish new packages in dependency
+   order: `linux-targets` → `kernel-abi-tools` → `linux-abi-scan` → `libc-abi-tools`
+   → `linux-abi-tools`. Upstream glibc data/source crates must already be available
+   at the required versions. Only the authorized publisher performs this step.
+5. Create a new source tag only for an authorized new version, on its exact
+   approved release commit. For existing-tag documentation, verify the existing
+   tag/commit and preserve it; never recreate, move or force-push a tag.
+6. Verify official registry archives, checksums, non-yanked state, clean VCS and
+   all five versioned docs.rs builds/pages. Preserve source/package evidence
+   separately from later documentation commits and consumer adoption.
+7. After approval and a green documentation workflow, publish GitHub Release
+   notes from the reviewed committed file, with no attachments. For historical
+   backfill, work in ascending version order; older versions use `--latest=false`,
+   and only the actual newest stable version uses `--latest`:
 
    ```sh
-   # first, in the glibc-abilists and glibc-provider repositories: cargo publish
-   cargo publish -p linux-targets
-   cargo publish -p kernel-abi-tools
-   cargo publish -p linux-abi-scan
-   cargo publish -p libc-abi-tools
-   cargo publish -p linux-abi-tools
+   gh release create vX.Y.Z --verify-tag --title "vX.Y.Z — concise outcome" \
+     --notes-file docs/releases/vX.Y.Z.md --latest=false
    ```
 
-   (`cargo publish --workspace` does the same in one command on Cargo 1.90+.)
-5. Tag the commit `vX.Y.Z` and push the tag.
-6. Confirm that docs.rs built every crate
-   (`https://docs.rs/crate/<name>/<version>/status.json` reports `doc_status: true`)
-   and that the crate pages read correctly. Add the release to the record above.
+   Use the final stable version's reviewed file with `--latest` instead of
+   `--latest=false`. Do not generate substitute bodies or falsify posting dates.
+8. Verify the live release tag, exact text and links, registry/source identity,
+   absence of unauthorized assets, and latest marker. Run the published checker
+   and its CI mode above before claiming release-documentation completion.
 
-A published version cannot be replaced. `cargo yank` only stops new lockfiles
-from selecting it.
+A published crate version cannot be replaced. `cargo yank` only stops new
+lockfiles from selecting it; it is not a way to rewrite a release.
 
 ## Versioning
 
