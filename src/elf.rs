@@ -584,6 +584,9 @@ fn profile_tables(bytes: &[u8]) -> Result<(Section, Section, Vec<Section>), Stri
     let (_, versym) = one(&sections, VERSYM)?.ok_or("clock profile requires version symbols")?;
     let (_, verdef) =
         one(&sections, VERDEF)?.ok_or("clock profile requires version definitions")?;
+    if dynamic.link != sym.link {
+        return Err("loader SONAME and symbols require one string table".into());
+    }
     let names = *sections
         .get(sym.link as usize)
         .ok_or("invalid string link")?;
@@ -649,8 +652,10 @@ fn profile_tables(bytes: &[u8]) -> Result<(Section, Section, Vec<Section>), Stri
         if tag == 0 {
             break;
         }
-        if matches!(tag, 5 | 6 | 11 | 0x6fff_fff0 | 0x6fff_fffc | 0x6fff_fffd)
-            && tags.insert(tag, r.u64(p + 8)?).is_some()
+        if matches!(
+            tag,
+            5 | 6 | 10 | 11 | 0x6fff_fff0 | 0x6fff_fffc | 0x6fff_fffd
+        ) && tags.insert(tag, r.u64(p + 8)?).is_some()
         {
             return Err("duplicate loader table tag".into());
         }
@@ -658,6 +663,7 @@ fn profile_tables(bytes: &[u8]) -> Result<(Section, Section, Vec<Section>), Stri
     for (tag, expected) in [
         (5, names.address),
         (6, sym.address),
+        (10, names.size),
         (11, 24),
         (0x6fff_fff0, versym.address),
         (0x6fff_fffc, verdef.address),

@@ -136,3 +136,55 @@ defines. It does not cover:
 
 Executables built with a 2.34 or later provider need glibc 2.34, because from 2.34
 `crt1.o` references `__libc_start_main@GLIBC_2.34`.
+
+
+## Derived clock link overlay API
+
+The 0.4.0 API addition `provider::link_profile` accepts actual selected
+`libc.so.6` and `librt.so.1` ELF files. It is independent of provider preparation:
+source/container providers, explicit providers and full sysroots can supply the
+same inputs. Ordinary stub rendering, provider caches, raw recorded ABI tables
+and the `libc-abi-provider-v1` descriptor keep their faithful contracts. The CLI
+has no clock policy option. Published 0.3.3 does not expose this API.
+
+Call `link_profile::prepare(libc, librt, cache_root,
+LinkProfile::LibcClocksV1)` to validate the inputs and derive the overlay.
+`LinkProfile::id()` is `"libc-clocks-v1"`. `Overlay` returns the two original
+SHA-256s, the profile and an optional `search_dir`. A nonempty directory contains
+regular `librt.so` and `librt.so.1` copies plus `manifest.json`. Its identity binds
+both input contents and the policy. Entries are staged then renamed into place;
+existing entries are fully checked, never repaired or overwritten. The local
+cache root must be controlled by the caller; this is not authenticated delivery
+or a promise of crash-durable filesystem transactions.
+
+The helper requires bounded little-endian x86_64 ELF64 DSOs with ordinary
+section/program headers, expected SONAMEs, and consistent loader/section tables.
+It uses the [ELF metadata limits](ELF-METADATA.md), including 64 MiB per input and
+100,000 dynamic symbols. Stripped section tables, linker scripts, unsupported
+inputs and inconsistent cache contents return errors without fallback. libc must
+provide all five default `GLIBC_2.17` clock definitions: `clock_gettime`,
+`clock_getres`, `clock_settime`, `clock_nanosleep`, `clock_getcpuclockid`.
+
+The derived copy sets only the GNU versym nondefault bit for these clocks'
+`GLIBC_2.2.5` default definitions in librt. It retains their explicit old versions;
+all remaining bytes, code, aliases, binding, symbol kind, sizes, library identity
+and dependencies remain unchanged. Derived metadata describes the copy separately
+from raw measurement. The recorded 2.17–2.29 stubs need this change; 2.30 has only
+compatibility clock definitions and 2.31+ has none in librt. Already compatible
+inputs return `search_dir: None`, with validated hashes and no cache creation.
+The overlay supplies no runtime implementation and makes no unwinder changes.
+
+The caller must resolve the exact selected ELF files and prove they belong to the
+selected provider/sysroot. Compiler probes must not leak host libraries or accept
+ambiguous scripts. Prefix the overlay search directory for ordinary `-lrt` and
+`-l:librt.so`/`-l:librt.so.1`. Absolute paths or scripts require identity-checked
+substitution at the same argument position, or refusal. No library arguments,
+groups, archives, response-file contents or linker state may be reordered.
+Host compilation and inspection remain outside this target-link policy. A
+consumer must include the policy ID and both hashes/path in its configuration and
+fingerprint; this helper does not orchestrate Cargo or compiler probing.
+
+GNU ld can merge mixed ordinary and explicit old-version references when library
+order alone is changed. The byte-derived compatibility-only overlay avoids that
+observed failure without removing explicit versions. The [candidate gates](RELEASING.md#planned-040-clock-overlay-release)
+distinguish producer byte/link evidence from pending consumer qualification.

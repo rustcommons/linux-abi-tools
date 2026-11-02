@@ -64,6 +64,17 @@ refuses unreviewed differences. The container route retains real runtime
 libraries for tests; source mode's loader file is a link stub, never executed.
 See [provider details and limits](USING-PROVIDERS.md).
 
+An explicit target-link transformation is available separately from the raw
+provider paths shown above: [`provider::link_profile`](../src/provider/link_profile.rs)
+validates actual selected libc/librt files, then derives a content-addressed
+one-library librt overlay. It changes only the five applicable clock versym
+nondefault bits, preserving every other byte. Inputs may also come from a full
+sysroot or explicit provider. The caller owns containment, search-prefix or
+identity-checked same-position substitution and fingerprinting; argument order,
+provider descriptors and raw recorded evidence remain unchanged. See the
+[overlay contract](USING-PROVIDERS.md#derived-clock-link-overlay-api), LAT-REQ-029.
+This API is a 0.4.0 preparation, not part of the published 0.3.3 snapshot.
+
 Both diagrams show implemented paths only. Compact ABI database work remains
 [planned](ROADMAP.md#glibc-data-and-abi-metadata); authenticated prebuilt delivery
 is [deferred pending legal review](ROADMAP.md#provider-delivery). Tier 3 actual

@@ -178,3 +178,44 @@ With bundled ABI data disabled, supply an external data directory.
 
 Checksums on crates.io protect integrity, not publisher identity. Mirror trust
 is a separate decision (see the kernel roadmap).
+
+
+## Planned 0.4.0 clock overlay release
+
+Preparation only; 0.3.3 remains the published workspace release. New public
+`provider::link_profile` API requires a minor release under the lockstep policy:
+all five versions/internal minima and the workspace lock are prepared at 0.4.0.
+No new upstream glibc dependency requirements, data regeneration, kernel profiles,
+runtime implementation or unwinder changes are included. Raw provider generation
+and descriptor v1 remain faithful; the explicitly requested derived overlay has
+its own content/policy identity. See the [API contract](USING-PROVIDERS.md#derived-clock-link-overlay-api).
+
+The 2026-11-02 producer investigation covered 746 cross-link cases (742 successful
+links, four expected static failures). That ordering investigation is diagnostic
+evidence, not a production ordering fix: later mixed-version probes disproved
+ordering alone for GNU ld. The committed overlay regression separately checks
+recorded 2.17–2.44 stub inputs, plus 32 GNU ld 2.40 / LLD 23.1.1 links on 2.22:
+all five ordinary/explicit-old clocks, four call/address combinations,
+PIE/non-PIE and both as-needed states, retaining `timer_create` as an RT control.
+These are link/ELF inspections, not runtime executions. Portable fixture tests
+cover byte preservation, invalid inputs, cache identity/corruption and concurrent
+writers. The explicit linker gate is ignored in ordinary portable test runs and
+requires the recorded stub directory plus cross tools; it never substitutes host
+libraries. The explicit `selected_real_dso_copy` gate also passed against Debian's real
+x86_64 libc/librt 2.28-10+deb10u1: exactly five changed bytes, all metadata other
+than the clock default flags preserved, inputs unchanged. Download:
+[Debian archived libc6 package](https://archive.debian.org/debian/pool/main/g/glibc/libc6_2.28-10+deb10u1_amd64.deb),
+SHA-256 `0ee0f0bfcd7b59ffda1dbc76ef58fa79512913204f2a336206467bfbf45bc69f`.
+That byte-derivation check does not qualify compiler sysroot discovery or runtime
+execution. Full-sysroot consumer orchestration and independent review remain
+pending. No old 0.3.3 qualification run proves this new feature.
+
+Before a release candidate: complete fmt, MSRV, workspace/default/no-default
+clippy/tests/docs and five-package archive gates on the exact final source;
+independent producer review and consumer/native qualification remain required.
+Publish only after the coordinator's approval, in order `linux-targets` →
+`kernel-abi-tools` → `linux-abi-scan` → `libc-abi-tools` → `linux-abi-tools`.
+The coordinator alone publishes and confirms all five before any new tag.
+Tier 3 remains deferred, not an ordinary-release blocker; authenticated prebuilt
+delivery remains deferred pending legal review. Cache verification is local
+content integrity, not producer authentication.
