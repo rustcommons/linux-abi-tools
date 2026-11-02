@@ -251,3 +251,52 @@ hard-link hook and expected fixed outcomes changed in the probe harnesses.
 This is bounded producer preparation evidence. Hosted checks, independent GO and
 full consumer/native qualification remain pending; no registry adoption,
 publication or runtime compatibility is established by these local checks.
+
+
+### Manual source and Windows evidence (2026-11-02)
+
+These checks use corrected producer source
+`e857e43f113fd5fb02d0f2afff58b90fcfbd1ee6`; later evidence-only changes do not
+alter its source, manifests or repository lock. They supplement the local gates
+above and do not turn queued hosted checks into passes.
+
+- Native x86_64 WSL, Rust/Cargo 1.90.0: `cargo test --test link_profile --lib
+  --locked --offline` passed 22 library and 12 integration tests. The two
+  external Linux linker/real-DSO gates were explicitly ignored in this run and
+  were separately executed in the producer cross-link evidence above. Raw log
+  `producer-e857-msrv-native.log`, SHA-256
+  `240aa5591891bc681f2b88c371479d6fc2e8a1e51410b8f74e02760f9dff3de4`.
+- Windows x86_64 MSVC/NTFS, Rust/Cargo 1.99.0, isolated target directory: the same
+  focused command passed 22 library and 11 integration tests. The Unix-only
+  symlink case is excluded by configuration, and the two Linux external gates
+  were explicitly ignored. This directly covers standard-library hard-link
+  publication, concurrent reuse and no-clobber behavior on NTFS; it does not
+  qualify Windows-host provider preparation or target linking. Summary
+  `producer-e857-windows-qualification.md`, SHA-256
+  `3b7d71e168dfc89583c0cd26be6725051c8f5e955e26715852fd88bdc67cbe7e`.
+- Source consumer `e3e31e44b2368ebea4a06974d931f254da4e1ac6` with that producer,
+  native x86_64 WSL/Rust 1.99.0, recorded 01:32:08–01:35:48 UTC: source-driver
+  gates passed, including 16 GNU ld 2.42 / LLD cases, host-sysroot selection,
+  old-to-new same-target-directory relinking, shell/TOML exports, commands and
+  C/CMake plus native-host-SDK/local-3.10-simulation smokes. The root-only source
+  patch retained registry kernel/scan/targets 0.3.3, glibc-abilists 0.1.2 and
+  glibc-provider-sources 0.1.1; this is not an all-five 0.4.0 registry graph or a
+  change to this repository's locked 0.1.0 upstream inputs. Archive
+  `native-e857-e3-proof.zip`, SHA-256
+  `e6fd5de1920eb1e5c408c217a898265ce9bae131b861cd1a2c429f6b98af7743`.
+  Inspection verified all 13 member hashes, the recorded source identities and
+  graph, all-five libc defaults, mixed ordinary/explicit-old `clock_gettime`,
+  and unchanged non-clock imports in all 16 comparisons. This inspection did
+  not rerun the native script. No clock-setting fixture was executed.
+
+Remaining producer release gates: independent approval of the corrected ELF/cache
+changes and evidence-only delta, applicable hosted/manual gate acceptance, and
+final corrected source-consumer qualification. The recorded consumer run is
+preliminary while its named-library-script bypass remains open; the corrected
+final native Rust 1.90 source pair is separate. Container-mode preparation and
+profile integration are not covered by that ZIP. The unchanged kernel,
+scanner/target and ordinary provider generation/container-builder code informs
+the scope of additional checks; it is not fresh execution evidence. Real-registry
+adoption and three-way consumer validation follow producer publication and remain
+separate Cargo release gates. No producer merge or publication approval is
+inferred here. Tier 3 and the authenticated-prebuilt legal deferral are unchanged.
