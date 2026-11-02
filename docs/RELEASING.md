@@ -1,7 +1,9 @@
 # Releasing
 
-See the [0.3.3 release record](REVIEW-FIXES.md#published-033-archives-and-documentation)
+See the [0.4.0 release record](#published-040-archives-and-documentation)
 for current published checksums, source identity and documentation status.
+The [0.3.3 release record](REVIEW-FIXES.md#published-033-archives-and-documentation)
+remains historical.
 The [0.3.2 qualification record](RELEASE-CANDIDATE-0.3.2.md) remains historical. The
 [2026-10-31 plan](RELEASE-PLAN.md) retains the dependency analysis and release gates.
 
@@ -49,6 +51,7 @@ is preserved alongside the completed publication record.
 | 0.1.1 | 2026-10-14 | `glibc-abilists` | `d7e5228dae5b2591fc7849a9b82607a7d6bc25bb` (glibc-abilists `v0.1.1`) |
 | 0.3.2 | 2026-10-31 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `d404073e2329405e9e6f2dd1005fd8671e0d0f41` ([`v0.3.2`](https://github.com/rustcommons/linux-abi-tools/tree/v0.3.2)) |
 | 0.3.3 | 2026-11-01 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `d483fd5a58e1361d008f06db5989acef72a84e54` ([`v0.3.3`](https://github.com/rustcommons/linux-abi-tools/tree/v0.3.3)) |
+| 0.4.0 | 2026-11-02 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `7ce231df7128582a355c2dce47ae6436364d5e88` ([`v0.4.0`](https://github.com/rustcommons/linux-abi-tools/tree/v0.4.0)) |
 
 **0.2.0:** `libc-abi-tools` accepts provider descriptors for every glibc release in the
 pinned ABI lists, 2.17 through 2.44 (0.1.0 accepted 2.17, 2.18 and 2.22), exposes them as
@@ -182,6 +185,10 @@ is a separate decision (see the kernel roadmap).
 
 ## Planned 0.4.0 clock overlay release
 
+> Historical preparation record: pending states below describe the successive
+> candidates at that time. The [published 0.4.0 record](#published-040-archives-and-documentation)
+> supersedes these release-status statements without rewriting their outcomes.
+
 Preparation only; 0.3.3 remains the published workspace release. New public
 `provider::link_profile` API requires a minor release under the lockstep policy:
 all five versions/internal minima and the workspace lock are prepared at 0.4.0.
@@ -300,3 +307,70 @@ the scope of additional checks; it is not fresh execution evidence. Real-registr
 adoption and three-way consumer validation follow producer publication and remain
 separate Cargo release gates. No producer merge or publication approval is
 inferred here. Tier 3 and the authenticated-prebuilt legal deferral are unchanged.
+
+
+## Published 0.4.0 archives and documentation
+
+All five workspace crates were published on 2026-11-02 from clean merged release
+commit [`7ce231df7128582a355c2dce47ae6436364d5e88`](https://github.com/rustcommons/linux-abi-tools/commit/7ce231df7128582a355c2dce47ae6436364d5e88),
+now tagged [`v0.4.0`](https://github.com/rustcommons/linux-abi-tools/tree/v0.4.0).
+The merge tree exactly matches independently approved `9af795eb23759bb37c0ed656418e71d7ce075239`;
+its source/manifests/lock match tested `e857e43f113fd5fb02d0f2afff58b90fcfbd1ee6`,
+with the expected evidence-only documentation delta. Publication followed targets
+→ kernel → scan → libc tools → umbrella. The merged five-package verification
+and archive audit preceded publication; no source changes or version/lock edits
+were made for this final evidence record.
+
+This release adds the explicitly requested [derived clock overlay API](USING-PROVIDERS.md#derived-clock-link-overlay-api).
+Raw recorded ABI, ordinary provider/stub generation, descriptor v1, kernel/scanner
+implementation and unwinder inputs remain unchanged. New API scope requires the
+lockstep 0.4.0 minor version; published 0.3.3 remains immutable and lacks this API.
+There is no new CLI clock knob or runtime implementation.
+
+Final hosted checks passed on approved `9af795e` before the normal merge:
+
+- [CI 41373834696](https://github.com/rustcommons/linux-abi-tools/actions/runs/41373834696): 39/39 jobs successful.
+- [Kernel 41373834504](https://github.com/rustcommons/linux-abi-tools/actions/runs/41373834504): 4/4 jobs successful.
+- [Provider integration 41373834529](https://github.com/rustcommons/linux-abi-tools/actions/runs/41373834529): 84/84 jobs successful.
+
+These complement the exact-source local and [manual native/Windows evidence](#manual-source-and-windows-evidence-2026-11-02)
+above. The blocked `1b3` source and ordering-only investigation remain historical;
+they are not release qualification. Independent approval covers the corrected
+ELF/cache code and narrow evidence delta. Cargo's named-script/final-pair,
+registry-adoption and three-way validation are separate consumer gates, not a
+producer API blocker. The earlier preliminary consumer ZIP is not promoted to
+final Cargo qualification here.
+
+Independent post-publication checks on 2026-11-02 downloaded every official
+archive and compared SHA-256 with both the crates.io version API and sparse index,
+as well as the prepared merged archives. All five are non-yanked. Each archive's
+`.cargo_vcs_info.json` identifies the exact release commit with no dirty marker;
+file inventories, normalized manifests, internal 0.4.0 minima, licenses and source
+payloads match the audited preparation. All five docs.rs status endpoints report
+`doc_status: true`, version `0.4.0`; the linked exact-version API pages return
+HTTP 200.
+
+| Package / official archive | SHA-256 | Files | docs.rs API / build status |
+| --- | --- | --- | --- |
+| [linux-targets 0.4.0](https://crates.io/crates/linux-targets/0.4.0) / [archive](https://static.crates.io/crates/linux-targets/linux-targets-0.4.0.crate) | `f080d0c9bff7e88e0ffdbbfb4f8b235b671e63fa6bf724fceff75c84d36990f0` | 8 | [API](https://docs.rs/linux-targets/0.4.0/linux_targets/) / [status](https://docs.rs/crate/linux-targets/0.4.0/status.json) |
+| [kernel-abi-tools 0.4.0](https://crates.io/crates/kernel-abi-tools/0.4.0) / [archive](https://static.crates.io/crates/kernel-abi-tools/kernel-abi-tools-0.4.0.crate) | `5fa80059e2cb3200a851576a54e2dcdf942b338b53a53bc6ee3785d1acabf139` | 15 | [API](https://docs.rs/kernel-abi-tools/0.4.0/kernel_abi_tools/) / [status](https://docs.rs/crate/kernel-abi-tools/0.4.0/status.json) |
+| [linux-abi-scan 0.4.0](https://crates.io/crates/linux-abi-scan/0.4.0) / [archive](https://static.crates.io/crates/linux-abi-scan/linux-abi-scan-0.4.0.crate) | `54fe03feacc99f77ed07d995434dc1abf5c59faaff07a3fb79e596b7d2a51986` | 11 | [API](https://docs.rs/linux-abi-scan/0.4.0/linux_abi_scan/) / [status](https://docs.rs/crate/linux-abi-scan/0.4.0/status.json) |
+| [libc-abi-tools 0.4.0](https://crates.io/crates/libc-abi-tools/0.4.0) / [archive](https://static.crates.io/crates/libc-abi-tools/libc-abi-tools-0.4.0.crate) | `915611aa54c3fe77eefedb34bac233b077e59669130a116e2f20bc25297af009` | 83 | [API](https://docs.rs/libc-abi-tools/0.4.0/libc_abi_tools/) / [status](https://docs.rs/crate/libc-abi-tools/0.4.0/status.json) |
+| [linux-abi-tools 0.4.0](https://crates.io/crates/linux-abi-tools/0.4.0) / [archive](https://static.crates.io/crates/linux-abi-tools/linux-abi-tools-0.4.0.crate) | `c85d44102d3f8f56570d98ae15d80c57184fd7e6c5c72b66c2b67ac301a848d6` | 7 | [API](https://docs.rs/linux-abi-tools/0.4.0/linux_abi_tools/) / [status](https://docs.rs/crate/linux-abi-tools/0.4.0/status.json) |
+
+The profile's documented bounds remain: selected little-endian x86_64 ELF64 DSOs,
+ordinary headers, 64 MiB inputs and 100,000 dynamic symbols; libc must supply all
+five GLIBC_2.17 defaults. Invalid loader mappings or existing cache entries refuse
+without fallback/repair. Cache roots are caller-controlled and require ordinary
+same-filesystem hard links; content integrity is not publisher authentication.
+Caller-owned selection/containment and same-position substitution remain separate
+from the producer's validated byte derivation. Link/modern-host simulation results
+do not prove universal old-system runtime compatibility. Tier 3 stays deferred,
+not an ordinary-release blocker; authenticated prebuilt delivery remains deferred
+pending legal review.
+
+Cargo registry adoption is now authorized after all five producer versions became
+available. This producer record proves availability/identity, not completion of
+consumer installation, the final source pair or three-way registry qualification.
+The historical [cargo-libc 0.2.2 adoption record](https://github.com/rustcommons/cargo-libc/blob/1ca27da9086ebf6cf19a6f2c0e858108b38cac46/docs/RELEASE-0.2.2.md)
+retains its original scope. New Cargo adoption must be recorded by its own gates.

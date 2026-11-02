@@ -73,7 +73,8 @@ sysroot or explicit provider. The caller owns containment, search-prefix or
 identity-checked same-position substitution and fingerprinting; argument order,
 provider descriptors and raw recorded evidence remain unchanged. See the
 [overlay contract](USING-PROVIDERS.md#derived-clock-link-overlay-api), LAT-REQ-029.
-This API is a 0.4.0 preparation, not part of the published 0.3.3 snapshot.
+This API is [published in 0.4.0](RELEASING.md#published-040-archives-and-documentation);
+the immutable 0.3.3 snapshot does not include it.
 
 Both diagrams show implemented paths only. Compact ABI database work remains
 [planned](ROADMAP.md#glibc-data-and-abi-metadata); authenticated prebuilt delivery

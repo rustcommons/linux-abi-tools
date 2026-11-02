@@ -140,7 +140,7 @@ Executables built with a 2.34 or later provider need glibc 2.34, because from 2.
 
 ## Derived clock link overlay API
 
-The 0.4.0 API addition `provider::link_profile` accepts actual selected
+The published 0.4.0 API `provider::link_profile` accepts actual selected
 `libc.so.6` and `librt.so.1` ELF files. It is independent of provider preparation:
 source/container providers, explicit providers and full sysroots can supply the
 same inputs. Ordinary stub rendering, provider caches, raw recorded ABI tables
@@ -193,5 +193,5 @@ fingerprint; this helper does not orchestrate Cargo or compiler probing.
 
 GNU ld can merge mixed ordinary and explicit old-version references when library
 order alone is changed. The byte-derived compatibility-only overlay avoids that
-observed failure without removing explicit versions. The [candidate gates](RELEASING.md#planned-040-clock-overlay-release)
+observed failure without removing explicit versions. The [release evidence](RELEASING.md#published-040-archives-and-documentation)
 distinguish producer byte/link evidence from pending consumer qualification.
