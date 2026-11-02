@@ -608,6 +608,15 @@ fn profile_tables(bytes: &[u8]) -> Result<(Section, Section, Vec<Section>), Stri
         let address = r.u64(p + 16)?;
         let size = r.u64(p + 32)?;
         if kind == 1 {
+            let memory_size = r.u64(p + 40)?;
+            let alignment = r.u64(p + 48)?;
+            if size > memory_size
+                || address.checked_add(memory_size).is_none()
+                || (alignment > 1
+                    && (!alignment.is_power_of_two() || offset % alignment != address % alignment))
+            {
+                return Err("invalid loader segment extent or alignment".into());
+            }
             r.slice(offset, size)?;
             loads.push((offset, address, size));
         }

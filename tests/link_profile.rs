@@ -391,3 +391,22 @@ fn cached_library_symlink_is_refused() {
     std::os::unix::fs::symlink(t.0.join("rt"), dir.join("librt.so")).unwrap();
     assert!(t.prepare().unwrap_err().contains("regular files"));
 }
+
+#[test]
+fn refuses_loader_memory_extent_and_alignment_mismatches() {
+    let t = Temp::new();
+    t.inputs();
+    let phoff = u64_at(RT, 32) as usize;
+    let phnum = u16::from_le_bytes(RT[56..58].try_into().unwrap()) as usize;
+    let load = (0..phnum)
+        .map(|i| phoff + i * 56)
+        .find(|&p| u32::from_le_bytes(RT[p..p + 4].try_into().unwrap()) == 1)
+        .unwrap();
+    for (field, value) in [(40, 0_u64), (16, u64::MAX), (48, 3)] {
+        let mut broken = RT.to_vec();
+        broken[load + field..load + field + 8].copy_from_slice(&value.to_le_bytes());
+        fs::write(t.0.join("rt"), broken).unwrap();
+        assert!(t.prepare().unwrap_err().contains("loader segment"));
+    }
+    assert!(!t.0.join("cache").exists());
+}
