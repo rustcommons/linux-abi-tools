@@ -13,6 +13,13 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+### Added
+
+- `libc_abi_tools::content_sha256` exposes the existing std-only full SHA-256
+  byte digest for first-party file-identity reports. It performs no file I/O or
+  authentication and does not change provider cache discriminators.
+
+
 ### Documentation
 
 - Add this changelog and versioned user-facing notes for all seven existing tags;

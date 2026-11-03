@@ -78,3 +78,22 @@ pub mod provider;
 mod sha256;
 pub mod stub;
 pub mod version;
+
+/// SHA-256 of exactly the supplied bytes, as 64 lowercase hexadecimal digits.
+///
+/// No file access or authentication is performed. Unlike a provider cache
+/// discriminator, this neither frames nor truncates the digest.
+pub fn content_sha256(bytes: &[u8]) -> String {
+    sha256::hex(&sha256::sha256(bytes))
+}
+
+#[cfg(test)]
+mod content_digest_tests {
+    #[test]
+    fn conventional_full_byte_digest() {
+        assert_eq!(
+            super::content_sha256(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+}
