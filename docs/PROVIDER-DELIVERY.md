@@ -366,8 +366,10 @@ refuses it. Every provider therefore links against a stub with the interface of 
   script, and `as` and `ld -shared` build it, as for the glibc stubs. It exports exactly
   those 138 definitions, with GCC's version chain (`GCC_3.0` … `GCC_4.8.0`, each
   inheriting the previous one), and contains no code: every function body is a trap.
-- **At run time** a program uses the target system's real `libgcc_s.so.1`. Any GCC
-  from 4.8.5 on provides every definition the stub has, so the program loads there.
+- **At run time** a program needs a real target `libgcc_s.so.1`, never the stub.
+  Later GCC runtimes can retain the recorded interface, but their package version
+  alone does not establish that an executable will load or behave correctly; see
+  the [current runtime boundary](#runtime-compatibility-boundary-2026-11-03).
 - **Qualification, every release** (glibc provider integration workflow; first
   passed in [run 38193829047](https://github.com/rustcommons/linux-abi-tools/actions/runs/38193829047), all 84 jobs):
   - the stub's exports and version chain equal the record; for 2.17–2.25 the
@@ -378,6 +380,18 @@ refuses it. Every provider therefore links against a stub with the interface of 
     the stub;
   - a link needing a newer interface (the oldest the host's GCC has beyond 4.8.5)
     fails against the stub, while the same object links against the host's library.
+
+### Runtime compatibility boundary (2026-11-03)
+
+At link time providers select the recorded GCC 4.8.5 interface; at execution
+time the OS loader selects a real `libgcc_s.so.1`. The [GCC runtime guide](GCC-RUNTIME.md)
+explains the normal build/inspect/test workflow, version history and deployment
+checks. This clarification does not extend the historical qualification above.
+
+Maintainer note: the link-only interface has 138 recorded definitions with
+version nodes through `GCC_4.8.0`; function bodies trap. Keep that stub out of
+deployment runtime search paths. `libc-abi provider verify` checks provider files,
+not the target's installed runtime, loader, dependency closure or behavior.
 
 ## Remaining questions
 
