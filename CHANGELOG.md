@@ -13,6 +13,25 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+No additional changes recorded.
+
+## [0.5.0] - 2026-11-03
+
+Release preparation; publication and final source identity remain pending in the
+[release record](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/RELEASING.md#050-hash-api-release-preparation-2026-11-03).
+The date is the preparation date until the actual UTC publication date is recorded.
+
+### Added
+
+- `libc_abi_tools::content_sha256` exposes the existing std-only full SHA-256
+  byte digest for first-party file-identity reports. It performs no file I/O or
+  authentication and does not change provider cache discriminators.
+- All five crates move together to 0.5.0 under the 0.x API-addition policy.
+  Other crate implementations and upstream glibc inputs are unchanged. The root
+  version participates in provider-cache identity, so upgrading it can require
+  provider preparation again; see the [upgrade notes](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/releases/v0.5.0.md).
+
+
 ### Documentation
 
 - Add this changelog and versioned user-facing notes for all seven existing tags;
