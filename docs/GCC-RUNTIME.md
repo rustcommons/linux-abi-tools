@@ -78,6 +78,38 @@ and `GCC_4.6.0` must not be inferred to be exports of that binary.
 The producer renders that recorded link interface for all its glibc releases;
 see the [maintainer reference](PROVIDER-DELIVERY.md#the-libgcc_s-stub).
 
+## Which libgcc does a GCC 16.2 build host select?
+
+The host compiler version does not by itself select the application's libgcc.
+Provider source compilation and final application linking are separate steps:
+
+| Build path | Link-time selection | What remains to check |
+| --- | --- | --- |
+| Automatically managed source/container provider | The producer generates the recorded GCC 4.8.5 link interface. Cargo's ordinary provider link places the descriptor's `compiler-runtime` search directory before forwarded library arguments. | A newer host GCC used to compile provider inputs does not replace this with its own shared runtime. Inspect actual application imports and any explicit library overrides. |
+| Explicit provider descriptor | Cargo uses the descriptor's supplied compiler-runtime directory; v1 does not promise that arbitrary supplied files are the producer-generated interface. | Validate the supplied files and resulting requirements; do not assume the managed GCC 4.8.5 record. |
+| Full sysroot with selected GCC installation | Cargo's Clang driver uses the selected `--sysroot`, `--gcc-install-dir` and `--rtlib=libgcc`; no managed libgcc stub is added by this path. | Inspect the real selected sysroot library and final ELF; its GCC version can differ from the build host's. |
+| Native/system or explicitly named libraries | Ordinary toolchain search and explicit link arguments determine inputs; a full library path can select a different input from `-lgcc_s`. | Inspect actual link inputs and output rather than assume either a producer stub or the host GCC 16 library was used. |
+
+This selection inspection is pinned to [cargo-libc toolchain source](https://github.com/rustcommons/cargo-libc/blob/bcd20d5634d201ccd18590c0b1e29cba305f69b2/src/toolchain.rs#L1014-L1048),
+including its [driver selection](https://github.com/rustcommons/cargo-libc/blob/bcd20d5634d201ccd18590c0b1e29cba305f69b2/src/toolchain.rs#L163-L171)
+and [provider/sysroot branch](https://github.com/rustcommons/cargo-libc/blob/bcd20d5634d201ccd18590c0b1e29cba305f69b2/src/toolchain.rs#L1086-L1101).
+It is not a guarantee about arbitrary linker scripts, response files or overrides.
+An object requiring a helper absent from the selected link interface needs a
+compatible input; a newer compiler version does not make that symbol available
+in the recorded interface.
+
+**Observed tool compatibility, 2026-11-02:** [glibc-provider replay run
+41454181443, GCC 16 job](https://github.com/rustcommons/glibc-provider/actions/runs/41454181443/job/125306745150)
+at `545013fc837076395439eb665113c8ded2f8db92` records `gcc (GCC) 16.2.0`
+and GNU ld 2.44. Its [replay script](https://github.com/rustcommons/glibc-provider/blob/545013fc837076395439eb665113c8ded2f8db92/qualification/replay-all.sh)
+compares compiled provider objects with recorded interfaces for 2.17–2.44;
+all rows have zero `differs` and zero `build-failed`, retaining the report's
+`identical-bytes`, `equivalent` and `accepted` distinctions. This supports that
+specific provider-input compiler/tool combination. It does not measure GCC
+16.2's complete libgcc exports, link an arbitrary application with that runtime,
+or qualify deployment on an old OS. This documentation audit has no local GCC
+16.2 executable and adds no fresh GCC 16.2 application-link execution evidence.
+
 ## Ordinary inspection and deployment workflow
 
 1. Build with the selected provider or explicit sysroot using the maintained
