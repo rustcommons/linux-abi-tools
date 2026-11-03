@@ -12,14 +12,13 @@ release, 2.17 through 2.44, on a newer machine. It contains:
 
 A provider is described by a six-field v1 descriptor, `provider.txt`
 ([PROVIDER-CONTRACT](https://github.com/rustcommons/cargo-libc/blob/main/docs/PROVIDER-CONTRACT.md)).
-It is not a runtime: the program runs with real target glibc and compiler-runtime
-libraries. **Runtime clarification (2026-11-03):** the GCC 4.8.5 link-only stub
-exports 138 recorded definitions with version nodes through `GCC_4.8.0`; its
-function bodies trap and must never be deployed. Provider verification is not
-validation of the installed target runtime. Check the actual symbol/version
-pairs, architecture, loader, dependency closure and bounded runtime behavior;
-see [runtime compatibility limits](PROVIDER-DELIVERY.md#runtime-compatibility-boundary-2026-11-03)
-and [application inspection](WORKFLOWS.md#3-inspect-a-built-binary-tier-1).
+At link time the provider selects the recorded glibc and compiler-runtime
+interfaces for the build. At execution time the OS loader selects real shared
+libraries in the deployment environment. You normally build with cargo-libc,
+inspect the resulting executable, then test it with the intended OS libraries;
+there is no separate runtime installation performed by provider preparation.
+See [GCC runtime versions and deployment](GCC-RUNTIME.md) for the version table,
+ordinary inspection workflow and the limits of a clean glibc scan.
 
 You rarely prepare one by hand. [cargo-libc](https://github.com/rustcommons/cargo-libc)
 prepares the provider for the release you select on first use. The commands below

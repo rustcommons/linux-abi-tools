@@ -383,34 +383,15 @@ refuses it. Every provider therefore links against a stub with the interface of 
 
 ### Runtime compatibility boundary (2026-11-03)
 
-This current clarification does not extend the historical qualification results
-above. The GCC 4.8.5 link-only stub constrains references selected through it to
-138 recorded definitions, with version nodes through `GCC_4.8.0`; that ceiling is
-not a claim that every executable needs the newest node. Its function bodies
-trap. Never deploy it as a runtime, including through runtime search paths.
+At link time providers select the recorded GCC 4.8.5 interface; at execution
+time the OS loader selects a real `libgcc_s.so.1`. The [GCC runtime guide](GCC-RUNTIME.md)
+explains the normal build/inspect/test workflow, version history and deployment
+checks. This clarification does not extend the historical qualification above.
 
-Deployment requires the actual selected runtime to provide each required
-symbol/version pair for the correct architecture, a compatible loader and the
-complete dependency closure. Exercise relevant behavior in the named target
-environment; export membership alone proves neither loading nor unwinding.
-This also applies to explicit providers, full sysroots and libraries loaded
-transitively or with `dlopen`; this producer does not validate an arbitrary
-installed target runtime. `libc-abi provider verify` verifies the provider, not
-that deployment environment.
-
-`GCC_4.2.0`, for example, is a symbol-version namespace, not an installed compiler
-or package version requirement. GCC's [4.8.5 version map](https://github.com/gcc-mirror/gcc/blob/releases/gcc-4.8.5/libgcc/libgcc-std.ver.in)
-places `_Unwind_GetIPInfo` in that namespace. The [GCC libgcc manual](https://gcc.gnu.org/onlinedocs/gccint/Libgcc.html)
-describes arithmetic, exception-handling and other helpers: one executable's
-unwind-only imports do not establish helper completeness for other programs.
-Do not infer the installed libgcc from a glibc floor or distro preset.
-
-For separate inspection of application requirements and runtime definitions,
-see [the supported readelf workflow](WORKFLOWS.md#3-inspect-a-built-binary-tier-1)
-and the maintained [cargo-libc user guide](https://github.com/rustcommons/cargo-libc/blob/main/docs/USER-GUIDE.md).
-A clean glibc scan does not check GCC requirements. Static LLVM replacement is a
-separate unresolved interoperability question; no dependency removal follows
-from this clarification.
+Maintainer note: the link-only interface has 138 recorded definitions with
+version nodes through `GCC_4.8.0`; function bodies trap. Keep that stub out of
+deployment runtime search paths. `libc-abi provider verify` checks provider files,
+not the target's installed runtime, loader, dependency closure or behavior.
 
 ## Remaining questions
 

@@ -120,7 +120,7 @@ libraries, and relevant behavior with bounded target-environment evidence.
 These commands do not resolve or qualify the complete runtime closure. The
 producer's `libc-abi glibc elf --input FILE` reports defined dynamic symbols,
 not application GCC requirement validation. See [provider runtime limits](PROVIDER-DELIVERY.md#runtime-compatibility-boundary-2026-11-03)
-and the [cargo-libc user guide](https://github.com/rustcommons/cargo-libc/blob/main/docs/USER-GUIDE.md).
+and the [GCC runtime version table and deployment workflow](GCC-RUNTIME.md).
 
 | Check | Confidence | Fails when |
 | --- | --- | --- |
