@@ -1,10 +1,9 @@
 # Releasing
 
-The [0.5.0 hash-API preparation](#050-hash-api-release-preparation-2026-11-03) is
-an unreleased candidate; the published 0.4.0 record below remains current.
-
-See the [0.4.0 release record](#published-040-archives-and-documentation)
-for current published checksums, source identity and documentation status.
+See the [published 0.5.0 record](#published-050-archives-and-documentation)
+for current official checksums, source identity and documentation status.
+The [0.5.0 preparation](#050-hash-api-release-preparation-2026-11-03) and
+[0.4.0 record](#published-040-archives-and-documentation) remain historical.
 The [0.3.3 release record](REVIEW-FIXES.md#published-033-archives-and-documentation)
 remains historical.
 The [0.3.2 qualification record](RELEASE-CANDIDATE-0.3.2.md) remains historical. The
@@ -56,6 +55,7 @@ is preserved alongside the completed publication record.
 | 0.3.2 | 2026-10-31 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `d404073e2329405e9e6f2dd1005fd8671e0d0f41` ([`v0.3.2`](https://github.com/rustcommons/linux-abi-tools/tree/v0.3.2)) |
 | 0.3.3 | 2026-11-01 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `d483fd5a58e1361d008f06db5989acef72a84e54` ([`v0.3.3`](https://github.com/rustcommons/linux-abi-tools/tree/v0.3.3)) |
 | 0.4.0 | 2026-11-02 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `7ce231df7128582a355c2dce47ae6436364d5e88` ([`v0.4.0`](https://github.com/rustcommons/linux-abi-tools/tree/v0.4.0)) |
+| 0.5.0 | 2026-11-03 | `linux-targets`, `kernel-abi-tools`, `linux-abi-scan`, `libc-abi-tools`, `linux-abi-tools` | `bc7fcb35ea86409a2a9f543b8d25b65ed321cf47` ([`v0.5.0`](https://github.com/rustcommons/linux-abi-tools/tree/v0.5.0)) |
 
 **0.2.0:** `libc-abi-tools` accepts provider descriptors for every glibc release in the
 pinned ABI lists, 2.17 through 2.44 (0.1.0 accepted 2.17, 2.18 and 2.22), exposes them as
@@ -498,6 +498,10 @@ retains its original scope. New Cargo adoption must be recorded by its own gates
 
 ## 0.5.0 hash API release preparation (2026-11-03)
 
+> Historical preparation record. Its then-pending merge/publication statements
+> describe the candidate at that time. The [published record](#published-050-archives-and-documentation)
+> below supersedes current status without rewriting those results.
+
 User-authorized preparation and publication chain; publication is performed only
 by the designated publisher. Independently reviewed API source
 `2c70e47954f328e55950d738d5a9295de7c44d67` adds only the pure public
@@ -549,3 +553,66 @@ The existing source-equivalent provider/kernel/clock evidence is historical;
 this pure utility/version preparation does not rerun unchanged broad native or
 container matrices. Tier 3 remains deferred, not an ordinary release blocker;
 prebuilt legal review is unchanged. See [0.5.0 notes](releases/v0.5.0.md).
+
+## Published 0.5.0 archives and documentation
+
+Published 2026-11-03 UTC, in dependency order, by the authorized publisher using
+Cargo 1.90 `publish --locked`. No producer-side publish command or republishing
+was performed during this verification. Exact release source/annotated tag:
+[`bc7fcb35ea86409a2a9f543b8d25b65ed321cf47`](https://github.com/rustcommons/linux-abi-tools/commit/bc7fcb35ea86409a2a9f543b8d25b65ed321cf47),
+[`v0.5.0`](https://github.com/rustcommons/linux-abi-tools/tree/v0.5.0).
+Tag object `ecae465fe180f4a42771ac48160f49dfa77631b5` peels to that commit;
+no existing tag moved. PR #12 normal merge preserved the independently approved
+`6a8b4e7c248c05d26298f6bead9fe340777ca5d7` tree and reviewed commits.
+[Candidate docs CI 41682117923](https://github.com/rustcommons/linux-abi-tools/actions/runs/41682117923)
+passed on that exact head. No unchanged source suites were rerun for merge or
+publication bookkeeping.
+
+### Official archive verification (2026-11-03)
+
+Independently downloaded every official registry archive and checked its full
+SHA-256 against both sparse-index and crates.io API records, non-yanked state,
+clean `.cargo_vcs_info.json` at the exact release source, member counts,
+normalized versions/internal minima, licenses and every source payload file.
+Cargo-generated normalized manifests/lockfiles were checked as metadata, not
+claimed byte-identical to the prepublication Cargo 1.99 packages. Official
+publication used Cargo 1.90; these official checksums supersede temporary-registry
+package hashes. Existing upstream glibc requirements and producer lock inputs
+remain unchanged; this is no new ABI/runtime implementation measurement.
+
+| Crate 0.5.0 | SHA-256 | Files |
+| --- | --- | ---: |
+| [linux-targets](https://crates.io/crates/linux-targets/0.5.0) | `1a30f3d016f4a8d3787af384dfd77adcb5077a2dad3244e050495e1122bbacc5` | 8 |
+| [kernel-abi-tools](https://crates.io/crates/kernel-abi-tools/0.5.0) | `6db5ee20d2ecffb6a38ef8d26319a55f665f3ca3ee940f4279d2df883bdc5837` | 15 |
+| [linux-abi-scan](https://crates.io/crates/linux-abi-scan/0.5.0) | `125f2e451fc6c979a6ba3e7a48a1f36e67a47e0738de0216b770e355dfbb6fcc` | 11 |
+| [libc-abi-tools](https://crates.io/crates/libc-abi-tools/0.5.0) | `c598bccdec99a399cc8ea639c69ffd59a58dd3dc7904ea5cc586afd01dcea469` | 83 |
+| [linux-abi-tools](https://crates.io/crates/linux-abi-tools/0.5.0) | `82bf748c40fdc5636eec28761cc2ec4f374d4050cf9c2a782b8a81bd6a09f3a4` | 7 |
+
+### Versioned documentation
+
+All five docs.rs builds report **All builds succeeded**, and each 0.5.0 API page
+was retrieved independently on 2026-11-03:
+
+| Crate | Successful build | Versioned API |
+| --- | --- | --- |
+| linux-targets | [Build](https://docs.rs/crate/linux-targets/0.5.0/builds/5142312) | [0.5.0](https://docs.rs/linux-targets/0.5.0/linux_targets/) |
+| kernel-abi-tools | [Build](https://docs.rs/crate/kernel-abi-tools/0.5.0/builds/5142316) | [0.5.0](https://docs.rs/kernel-abi-tools/0.5.0/kernel_abi_tools/) |
+| linux-abi-scan | [Build](https://docs.rs/crate/linux-abi-scan/0.5.0/builds/5142319) | [0.5.0](https://docs.rs/linux-abi-scan/0.5.0/linux_abi_scan/) |
+| libc-abi-tools | [Build](https://docs.rs/crate/libc-abi-tools/0.5.0/builds/5142321) | [0.5.0](https://docs.rs/libc-abi-tools/0.5.0/libc_abi_tools/) |
+| linux-abi-tools | [Build](https://docs.rs/crate/linux-abi-tools/0.5.0/builds/5142327) | [0.5.0](https://docs.rs/linux-abi-tools/0.5.0/linux_abi_tools/) |
+
+The new [content_sha256 API page](https://docs.rs/libc-abi-tools/0.5.0/libc_abi_tools/fn.content_sha256.html)
+was retrieved and its full-byte/hexadecimal contract checked. A hash is not
+identity authentication, ELF validation or runtime compatibility. Provider-cache
+refresh, offline/import limitations, deferred tier 3 and the prebuilt legal gate
+remain as described in the [release notes](releases/v0.5.0.md).
+
+### Release notes and consumer boundary
+
+The final [committed 0.5.0 notes](releases/v0.5.0.md) and changelog record the
+actual publication date/source. GitHub Release publication/full published-note
+verification is the next documentation step; it is not inferred from crate
+availability. The Release must use these exact notes, `v0.5.0` as latest and
+zero assets. Actual-registry consumer adoption, unpatched package installation,
+native Windows/WSL checks and the consumer checker release are separate consumer
+gates; producer publication does not claim them complete.
