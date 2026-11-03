@@ -117,3 +117,18 @@ carry their own attribution:
   and their public container images, which were used to read glibc versions.
   No distribution software or image is included. Distribution names are
   trademarks of their owners.
+
+## Pinned LLVM libunwind sources (unreleased preparation API)
+
+The 31 unmodified source/header/license files under `src/runtime/llvm_sources`
+come from LLVM 23.1.4, source commit
+`7a941dfb2877a0b8cf30323fefa85ad019e0b0f5`. The original archive SHA256 and
+per-file inventory are recorded in [the preparation guide](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/LLVM-UNWIND.md)
+and `src/runtime/llvm_sources/SOURCES.tsv`. No precompiled runtime is included.
+
+Preserve the complete upstream `LICENSE.TXT`: modern files carry
+Apache-2.0 WITH LLVM-exception, and the full license also retains historical
+libunwind MIT/NCSA notices. The root package's license expression includes the
+bundled sources; the repository's original Rust code remains MIT. This source
+inclusion is not prebuilt/SDK/binary distribution clearance. Current published
+archives and their licenses remain immutable.
