@@ -609,10 +609,26 @@ remain as described in the [release notes](releases/v0.5.0.md).
 
 ### Release notes and consumer boundary
 
-The final [committed 0.5.0 notes](releases/v0.5.0.md) and changelog record the
-actual publication date/source. GitHub Release publication/full published-note
-verification is the next documentation step; it is not inferred from crate
-availability. The Release must use these exact notes, `v0.5.0` as latest and
-zero assets. Actual-registry consumer adoption, unpatched package installation,
-native Windows/WSL checks and the consumer checker release are separate consumer
-gates; producer publication does not claim them complete.
+Completed 2026-11-03: [PR #13](https://github.com/rustcommons/linux-abi-tools/pull/13)
+merged normally as `f531b81f704188d0bce0960396f11f2c4638f9b4`, preserving the
+approved `42ed83b2a992380be0789c3d0e71f641b66ea458` tree. The exact final
+[committed notes](releases/v0.5.0.md) were published to the existing
+[v0.5.0 GitHub Release](https://github.com/rustcommons/linux-abi-tools/releases/tag/v0.5.0)
+with `--verify-tag`, `--notes-file` and `--latest`, without assets. Live API
+verification confirmed byte-for-byte note equality, stable/latest `v0.5.0`,
+zero assets and the unchanged annotated tag/release commit. The final note body
+was committed separately from the immutable release-source preparation snapshot;
+its SHA-256 is `dd06d98bcd46a64129eddeb9772a365eb9578f8464c83887962c94ea0bfcf618`.
+
+[Prepublication docs CI 41684526130](https://github.com/rustcommons/linux-abi-tools/actions/runs/41684526130)
+passed on the exact approved note head before Release publication.
+[Full published-verification CI 41685288117](https://github.com/rustcommons/linux-abi-tools/actions/runs/41685288117)
+passed on merged `f531b81`, checking all eight exact bodies/tags and latest
+0.5.0. The unchanged local `--published` checker also passed all eight versions.
+Its first immediate post-create query briefly saw a stale listing without
+v0.5.0; a subsequent API listing and unchanged checker passed after propagation.
+That initial observation is not a publication or validation success.
+
+Actual-registry consumer adoption, unpatched package installation, native
+Windows/WSL checks and the consumer checker release remain separate consumer
+gates; this producer completion record does not claim them complete.
