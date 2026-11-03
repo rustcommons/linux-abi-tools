@@ -17,9 +17,8 @@ No additional changes recorded.
 
 ## [0.5.0] - 2026-11-03
 
-Release preparation; publication and final source identity remain pending in the
-[release record](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/RELEASING.md#050-hash-api-release-preparation-2026-11-03).
-The date is the preparation date until the actual UTC publication date is recorded.
+Published all five crates on 2026-11-03 UTC from `bc7fcb35ea86409a2a9f543b8d25b65ed321cf47`,
+annotated tag `v0.5.0`. See the [official archive and docs.rs record](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/RELEASING.md#published-050-archives-and-documentation).
 
 ### Added
 
@@ -32,7 +31,10 @@ The date is the preparation date until the actual UTC publication date is record
   provider preparation again; see the [upgrade notes](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/releases/v0.5.0.md).
 
 
-### Documentation
+### Historical documentation work (2026-11-02)
+
+The following records the seven-tag backfill before 0.5.0; its then-latest
+v0.4.0 result is historical, not the current latest-release marker.
 
 - Add this changelog and versioned user-facing notes for all seven existing tags;
   distinguish old test evidence, current artifact verification and remaining gaps.
