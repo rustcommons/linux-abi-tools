@@ -207,7 +207,7 @@ the vendored libunwind upstream revision from Clang's version number.
 | --- | --- | --- | --- |
 | Source and patches | Versioned [builder](https://codeberg.org/ziglang/zig/raw/commit/7647adab80dd088f4de3610fd245915a912eb6ad/src/libs/libunwind.zig), vendored source at that Zig commit | Unmodified LLVM 23.1.4 source commit `7a941dfb2877a0b8cf30323fefa85ad019e0b0f5`, [inventory](../src/runtime/llvm_sources/SOURCES.tsv) | 13/31 compared files are byte-identical; 18 differ. `UnwindLevel1.c`/`UnwindLevel1-gcc-ext.c` differ only in comments; the labelled AddressSpace/DwarfParser Zig patches already have the same code in LLVM 23.1.4. Other architecture/code changes remain; no whole-library equivalence claim. |
 | Object/personality/helper set | Nine common units **plus** vendored `gcc_personality_v0.c`; compiler_rt is separate | Nine units only; no personality/general helper completeness. Separate pinned compiler-rt personality experiment was outside this API | The [0.17 personality](https://codeberg.org/ziglang/zig/raw/commit/7647adab80dd088f4de3610fd245915a912eb6ad/lib/libunwind/src/gcc_personality_v0.c) removes compiler-rt header dependencies and changes its abort macro to `__builtin_unreachable()`. It is not the upstream helper tested separately. Under the same Clang 16/x86/2.17 headers, their active main-personality function tokens match; preprocessing only, not helper/binary equivalence. The exact Zig crash occurs at its first context getter, before that abort path. |
-| gcc_s handling | [cargo-zigbuild 0.23.4](https://docs.rs/crate/cargo-zigbuild/0.23.4/source/src/linker_args.rs) rewrites `-lgcc_s` to `-lunwind`. Independently, pinned [Zig classification](https://codeberg.org/ziglang/zig/raw/commit/7647adab80dd088f4de3610fd245915a912eb6ad/src/target.zig) classifies direct `gcc_s` as both compiler_rt and libunwind | Preparation selects no link arguments and leaves the recorded GCC interface/provider descriptor unchanged; native diagnostic wrapper retained `-lgcc` as a bounded reference, not a production fallback | These are different layers. Neither nine-unit libunwind nor a symbol-name replacement proves arithmetic/helper or explicit GCC-version support. |
+| gcc_s handling | [cargo-zigbuild 0.23.4](https://github.com/rust-cross/cargo-zigbuild/blob/4258db97f6ac4bd1fc6e5c714d3f8d01db5c35e8/src/zig/linker_args.rs#L63-L64) rewrites `-lgcc_s` to `-lunwind`. Independently, pinned [Zig classification](https://codeberg.org/ziglang/zig/raw/commit/7647adab80dd088f4de3610fd245915a912eb6ad/src/target.zig) classifies direct `gcc_s` as both compiler_rt and libunwind | Preparation selects no link arguments and leaves the recorded GCC interface/provider descriptor unchanged; native diagnostic wrapper retained `-lgcc` as a bounded reference, not a production fallback | These are different layers. Neither nine-unit libunwind nor a symbol-name replacement proves arithmetic/helper or explicit GCC-version support. |
 | Visibility and exports | `_LIBUNWIND_HIDE_SYMBOLS`, hidden/inlines-hidden/global-new-delete visibility; C probe has local hidden personality/getters | PrivatePicV1 hides symbols; ExportablePicV1 changes construction visibility only. Separate minimal-export diagnostic had 18 unwind definitions | Hidden LLVM fails valid cross-DSO cases; minimal exports pass only U07/U10/U11 under actual bfd 2.42 and LLD 20.1.8. Initial first-packet GNU labels were wrong (actual LLD); filenames are not linker evidence. Exported names do not override glibc handle-local GCC selection or qualify arbitrary loaders. |
 | Link order/extraction | Preserved C link: object, UBSan archive, selective libunwind, glibc DSOs in m/c/ld/resolv/pthread/dl/rt/util order, nonshared and compiler_rt; no whole-archive or broad export. Exact Aero log retains the incoming rustc argument stream; the final Zig internal archive/member map was not retained | Factory does not link. C/personality experiments used whole-archive; Rust probes use same-position archive substitution and preserve other operands/state | Whole-archive is not necessary for the observed C failure: the selective Zig reference also fails. Do not reorder caller arguments, adopt broad exports or equate a reference C link line with the Aero final link map. |
 | EH/table/configuration flags | Native-only, PIC, C99 `-fexceptions`, C++ no exceptions/RTTI, asynchronous unwind tables, runtime optimization derived from Zig config | Native-only PIC, C99 `-fexceptions`, C++17 no exceptions/RTTI/C++ headers, explicit `-O2 -g0 -DNDEBUG -funwind-tables`; selected header/resource snapshots | Observed Clang 16 emits asynchronous table mode 2 for the producer x86 flags. Exact Aero uses release ThinLTO, one codegen unit, stripped PIE; the retained C Zig control is debug/non-PIE with a UBSan archive. Compiler 18/22, headers (selected 2.17 vs Zig target 2.22), optimization/debug/sanitizer and final executable flags differ. No flag-for-flag/native equivalence assertion. |
@@ -246,21 +246,35 @@ helper trial and this *different* Zig personality both fail their named controls
 that is evidence of a shared mechanism in these cases, not proof every coherent
 LLVM strategy is impossible or permission to exclude baseline-supported calls.
 
-A falsifiable next control reuses the unchanged U07/U10/U11 harness and dynamic-GCC
-DSO, swapping only the supplied hidden archive for the preserved Zig 0.17.0
-reference archive, with an actual bfd link and the same Rust 1.90 settings.
-Retain GCC baseline, exact drop/payload oracles, maps, member/dynamic-symbol
-inventory and getter/personality/resume bindings. **Prediction, not performed
-here:** if the same mixed-context mechanism governs those paths, contained U07
-passes but the hidden cross-DSO paths fail as in the LLVM 23.1.4 reference. A Zig
-pass with demonstrated coherent bindings would falsify that prediction and require
-isolating the recipe/member difference; no failure is relabelled expected-green.
-No broad matrix, context bridge, export workaround or production policy follows.
+### Recorded hidden Zig archive-swap control
+
+The previously proposed U07/U10/U11 control was subsequently executed and
+independently reviewed on 2026-11-03. It reuses the same Rust 1.90 host/bridge
+fixtures, GCC 13 dynamic-GCC DSO and local-loader scope, substituting the preserved
+hidden Zig 0.17.0 archive under actual forced GNU bfd. The archive SHA256 is
+`d438a1ba257b6562f37715313798d3ca74402d49950cc7fddab0a1ff43d2838c`.
+
+The GCC baseline passes U07/U10/U11. The hidden Zig host passes U07 but
+**U10 and U11 both SIGSEGV (exit -11)**. The harness exits **1**, with those two
+compatibility oracles still failed. Independent review verified 54 hashes,
+archive/fixture identities and actual bfd selection. The retained packet is
+`zig017-hidden-roundtrip-native-proof.tar.gz`, SHA256
+`f07367880377bea3154b9fcdee9a4a766fc1a8fed37f38823fce0131d2bee5d8`.
+Maps, symbols and loader records preserve private executable LLVM definitions
+alongside DSO getters/resume bound to real GCC.
+
+This records the predicted bounded failure class for this supplied archive-swap
+fixture. It is **not** a full cargo-zigbuild driver, Aero, old-OS or all-Zig result.
+The earlier LLVM 23.1.4 hidden U10 aborted; this Zig U10 segfaults, so identical
+fault sites or private context-field/instruction decoding are not established.
+The exact Zig C pthread_exit GDB stack above remains a separate named case.
+No failed oracle is relabelled expected-green, and no context bridge, export
+workaround, runtime/default policy or release approval follows.
 
 ## Producer corner cases and release gates
 
-Use this producer inventory with the consumer-owned [unwinder plan and acceptance
-inventory](https://github.com/rustcommons/cargo-libc/blob/main/docs/UNWINDER-0.4.0-PLAN.md#proposed-evidence-and-acceptance-gates).
+Use this producer inventory with the consumer-owned [canonical U01–U22 release
+checklist](https://github.com/rustcommons/cargo-libc/blob/d716c9c0e1e19057a3533e5d11982fbf7926a0f1/docs/UNWINDER-RELEASE-CHECKLIST.md#permanent-acceptance-cases-and-current-automation).
 Output selection, receipts, R/I/A/E, freshness and execution guarding belong there;
 this table records producer mechanisms and the evidence needed at that boundary.
 U01–U22 retain their existing verification meanings; the LAT IDs below are existing
@@ -268,7 +282,7 @@ trace entries, not new contracts. A planned gate is not performed evidence.
 
 | Producer case / trace | Mechanism and trigger | Expected oracle | Actual bounded evidence | Remaining gate / disposition |
 | --- | --- | --- | --- | --- |
-| Opaque contexts/visibility — LAT-REQ-031; U07/U10–12 | Static hidden/exported runtime, a crossed cleanup-bearing frame, or an embedding executable changes personality/getter ownership | Baseline-valid originating-runtime round trips retain payload and exact once-only drops; inspect actual bindings | First hidden LLVM reference: U07 pass, U10 abort, U11 SIGSEGV. Corrected minimal exports: those three cases pass on actual bfd/LLD only | **Application blocker** remains: C forced-unwind failure and bypass paths. Construction visibility is not process compatibility. |
+| Opaque contexts/visibility — LAT-REQ-031; U07/U10–12 | Static hidden/exported runtime, a crossed cleanup-bearing frame, or an embedding executable changes personality/getter ownership | Baseline-valid originating-runtime round trips retain payload and exact once-only drops; inspect actual bindings | First hidden LLVM reference: U07 pass, U10 abort, U11 SIGSEGV. Corrected minimal exports: those three cases pass on actual bfd/LLD only. Independently reviewed hidden Zig archive swap: U07 pass, U10/U11 SIGSEGV, harness exit 1; same fixture/actual bfd, not full Zig driver | **Application blocker** remains: C forced-unwind failure and bypass paths. Construction visibility is not process compatibility. |
 | Native C cleanup/forced unwind — LAT-REQ-009/031; U13/U14 | Same C-only worker with/without `-fexceptions`, libc/libgcc/runtime/helper update | GCC baseline, exactly one cleanup, correct exit/join/cancel value; deferred cancellation only; no Rust frames | Plain controls 9/9 pass. C EH and pinned-helper packets retain exit/cancel SIGSEGVs; exact Zig GDB path above closes that one stack gap on host glibc 2.39 | **Known blocker**, not an expected-success negative test. Requalify actual engine/personality/getter/resume owners and lazy loads; Rust catches or missing direct NEEDED cannot waive it. |
 | DSO/Python/plugins — LAT-REQ-010/031; U07–12/U19 | Multiple DSOs, Python embedding, load order/local/global/deep binding or direct handle lookup | Existing internal catches/error translation and baseline-valid C-unwind boundaries remain usable; measure the same loader scope/order | One Rust DSO mechanism tested; glibc direct-GCC lookup observed. Full PyO3/multiple-DSO/deepbind preservation is unqualified | **Integration/application gate**. An unchanged extension can still run under altered host bindings. Unsupported user-target C++ does not eliminate foreign C++ DSOs with valid C APIs/internal catches; do not require a foreign Rust panic catch. |
 | Panic/rethrow/backtrace/lifetime — LAT-REQ-031; U01–05/U10–12 | Rust/std, personality/source/config, nested cleanup, thread or first-use backtrace changes | Exact drop order, payload identity, continued execution; bounded uncaught/double-panic statuses and meaningful first/repeated/threaded traces | ARM/system fixture sanity and named native round trips only. Zig backtrace passes despite exit/cancel failure. Rust 1.90 source can free a caught exception without Delete | **Broader candidate gate open**. No leaking owner map or exception-class/foreign-private-field ownership guess is approved; trace first lazy loads rather than final maps alone. |
