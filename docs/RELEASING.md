@@ -1,5 +1,8 @@
 # Releasing
 
+The [0.5.0 hash-API preparation](#050-hash-api-release-preparation-2026-11-03) is
+an unreleased candidate; the published 0.4.0 record below remains current.
+
 See the [0.4.0 release record](#published-040-archives-and-documentation)
 for current published checksums, source identity and documentation status.
 The [0.3.3 release record](REVIEW-FIXES.md#published-033-archives-and-documentation)
@@ -492,3 +495,57 @@ available. This producer record proves availability/identity, not completion of
 consumer installation, the final source pair or three-way registry qualification.
 The historical [cargo-libc 0.2.2 adoption record](https://github.com/rustcommons/cargo-libc/blob/1ca27da9086ebf6cf19a6f2c0e858108b38cac46/docs/RELEASE-0.2.2.md)
 retains its original scope. New Cargo adoption must be recorded by its own gates.
+
+## 0.5.0 hash API release preparation (2026-11-03)
+
+User-authorized preparation and publication chain; publication is performed only
+by the designated publisher. Independently reviewed API source
+`2c70e47954f328e55950d738d5a9295de7c44d67` adds only the pure public
+`content_sha256` wrapper and its known-vector test to production source. Release
+preparation preserves that source and moves all five versions/internal minima
+and workspace lock to 0.5.0. The proposed 0.4.1 was rejected under the existing
+[API-addition minor policy](#versioning); no patch-policy exception is taken.
+
+`glibc-abilists` and `glibc-provider-sources` lock entries remain exactly 0.1.0
+with their existing checksums. Raw ABI/provider data, kernel profiles, all other
+production code and the held LLVM research branch are unchanged. The root version
+participates in provider-cache identity; the [upgrade notes](releases/v0.5.0.md#upgrade)
+record the resulting cache refresh and existing offline/import boundaries.
+
+Local candidate checks passed on Linux aarch64 with Rust 1.99.0: fmt,
+128 workspace all-target tests (three explicit external-fixture ignores), six
+doctests, 58 root no-default all-target tests (two explicit ignores), workspace
+all-feature and root no-default Clippy with warnings denied, and workspace API
+docs with rustdoc warnings denied. Rust 1.90.0 workspace all-target checking
+passed. These are not native x86_64 or Windows execution evidence.
+
+The ignored cases are `recorded_stubs_and_mixed_version_linkers`,
+`selected_real_dso_copy`, and, in the workspace run only,
+`accepts_official_cargo_and_rustc_driver`. Their external linker/DSO/toolchain
+fixtures were not rerun for this wrapper/version change. `content_digest_tests::conventional_full_byte_digest`
+passed using the unchanged private digest implementation.
+
+`cargo +1.99.0 package --workspace --locked --offline --allow-dirty` verified
+all five packages against Cargo's temporary workspace registry. Archive audits
+checked file allowlists, byte equality to selected source files, normalized
+manifests/internal minima, package locks, licenses and VCS paths. That initial
+packaging used the reviewed source plus release edits and dirty VCS metadata;
+it is not a publication artifact. Clean candidate packages are regenerated and
+audited after committing release preparation; their exact hashes/VCS identity
+are recorded on PR #12 and in the review evidence packet. Temporary-registry
+checksums are prepublication evidence, not official registry checksums.
+
+Local checks do not claim hosted success, registry adoption or publication.
+Hosted documentation results and independent review are reported separately on
+PR #12. After independent GO and applicable checks, merge normally preserving
+reviewed commits, audit all five packages again for the clean merged VCS identity,
+and hand the exact merged release commit to the sole publisher. Publish dependency order remains
+`linux-targets` → `kernel-abi-tools` → `linux-abi-scan` → `libc-abi-tools` →
+`linux-abi-tools`. No tag or GitHub Release is created before all-five publication
+confirmation and its required verification. Actual registry consumer adoption and
+unpatched package installation remain separate consumer gates.
+
+The existing source-equivalent provider/kernel/clock evidence is historical;
+this pure utility/version preparation does not rerun unchanged broad native or
+container matrices. Tier 3 remains deferred, not an ordinary release blocker;
+prebuilt legal review is unchanged. See [0.5.0 notes](releases/v0.5.0.md).
