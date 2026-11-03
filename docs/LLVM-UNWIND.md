@@ -174,8 +174,125 @@ general mixed-runtime compatibility or old-system/tier 3 qualification. The
 application/default decision remains open. Shared libraries/PyO3 retain existing
 behavior. No new release or binary distribution is authorized by this foundation.
 
+## 2026-11-03 pinned Zig comparison and known mixed-context blocker
+
+Scoped preparation source/API/package review approved **`558f9cf6ba017c9b926d6c1390494ad0c1c8e525`**.
+That closes the preparation containment/package review at that source, not runtime,
+full-sysroot/lazy integration, default, merge or release gates. The current system
+runtime remains unchanged. The following comparison records mechanisms, not a
+claim that a construction profile is a safe application policy.
+
+The exact retained [three-way run 41378111334](https://github.com/rustcommons/cargo-libc/actions/runs/41378111334)
+uses Cargo `29582bc7af35cba1f741f989b47bc520979e13ae` and Aero
+`9c248300f1e2ab20ce34dc4b227eb322e33e4c93`, Rust 1.99.1,
+Zig 0.17.0 and cargo-zigbuild 0.23.4. Its Zig executable SHA256 is
+`d2e3767e7b1c94d173eb9788a096dcd2bb4414adbcd912b0e6564224b82ce4da`;
+ELF `.comment` identifies Clang/LLD 22.1.8. It is byte-identical to the earlier
+[Aero CI run 41340622271](https://github.com/joey-huckabee/aero1553/actions/runs/41340622271)
+artifact, whose install log names the PyPI x86_64 0.17.0 wheel. The three-way
+behavioral comparison matched 182/182 invocations, **but the unchanged strict
+comparator failed**: Cargo retained direct libgcc_s and twelve versioned unwind
+imports; Zig had neither and had additional GLIBC imports from its static runtime.
+This is clock-era application evidence, not fresh unwind/old-system qualification.
+
+Versioned source reference: Zig 0.17.0's peeled source commit is
+`7647adab80dd088f4de3610fd245915a912eb6ad`. All 31 compared source/license files
+plus its personality match that commit in the preserved wheel. The named x86
+wheel's RECORD declares the same 32 payload hashes; only ZIP metadata/RECORD was
+range-fetched, **not** the full x86 wheel. The actual runner did not record an
+installed compiler executable digest. Do not substitute current `master` or infer
+the vendored libunwind upstream revision from Clang's version number.
+
+| Aspect | Pinned Zig 0.17.0 reference | Producer 558 preparation / retained experiments | Consequence and evidence limit |
+| --- | --- | --- | --- |
+| Source and patches | Versioned [builder](https://codeberg.org/ziglang/zig/raw/commit/7647adab80dd088f4de3610fd245915a912eb6ad/src/libs/libunwind.zig), vendored source at that Zig commit | Unmodified LLVM 23.1.4 source commit `7a941dfb2877a0b8cf30323fefa85ad019e0b0f5`, [inventory](../src/runtime/llvm_sources/SOURCES.tsv) | 13/31 compared files are byte-identical; 18 differ. `UnwindLevel1.c`/`UnwindLevel1-gcc-ext.c` differ only in comments; the labelled AddressSpace/DwarfParser Zig patches already have the same code in LLVM 23.1.4. Other architecture/code changes remain; no whole-library equivalence claim. |
+| Object/personality/helper set | Nine common units **plus** vendored `gcc_personality_v0.c`; compiler_rt is separate | Nine units only; no personality/general helper completeness. Separate pinned compiler-rt personality experiment was outside this API | The [0.17 personality](https://codeberg.org/ziglang/zig/raw/commit/7647adab80dd088f4de3610fd245915a912eb6ad/lib/libunwind/src/gcc_personality_v0.c) removes compiler-rt header dependencies and changes its abort macro to `__builtin_unreachable()`. It is not the upstream helper tested separately. Under the same Clang 16/x86/2.17 headers, their active main-personality function tokens match; preprocessing only, not helper/binary equivalence. The exact Zig crash occurs at its first context getter, before that abort path. |
+| gcc_s handling | [cargo-zigbuild 0.23.4](https://docs.rs/crate/cargo-zigbuild/0.23.4/source/src/linker_args.rs) rewrites `-lgcc_s` to `-lunwind`. Independently, pinned [Zig classification](https://codeberg.org/ziglang/zig/raw/commit/7647adab80dd088f4de3610fd245915a912eb6ad/src/target.zig) classifies direct `gcc_s` as both compiler_rt and libunwind | Preparation selects no link arguments and leaves the recorded GCC interface/provider descriptor unchanged; native diagnostic wrapper retained `-lgcc` as a bounded reference, not a production fallback | These are different layers. Neither nine-unit libunwind nor a symbol-name replacement proves arithmetic/helper or explicit GCC-version support. |
+| Visibility and exports | `_LIBUNWIND_HIDE_SYMBOLS`, hidden/inlines-hidden/global-new-delete visibility; C probe has local hidden personality/getters | PrivatePicV1 hides symbols; ExportablePicV1 changes construction visibility only. Separate minimal-export diagnostic had 18 unwind definitions | Hidden LLVM fails valid cross-DSO cases; minimal exports pass only U07/U10/U11 under actual bfd 2.42 and LLD 20.1.8. Initial first-packet GNU labels were wrong (actual LLD); filenames are not linker evidence. Exported names do not override glibc handle-local GCC selection or qualify arbitrary loaders. |
+| Link order/extraction | Preserved C link: object, UBSan archive, selective libunwind, glibc DSOs in m/c/ld/resolv/pthread/dl/rt/util order, nonshared and compiler_rt; no whole-archive or broad export. Exact Aero log retains the incoming rustc argument stream; the final Zig internal archive/member map was not retained | Factory does not link. C/personality experiments used whole-archive; Rust probes use same-position archive substitution and preserve other operands/state | Whole-archive is not necessary for the observed C failure: the selective Zig reference also fails. Do not reorder caller arguments, adopt broad exports or equate a reference C link line with the Aero final link map. |
+| EH/table/configuration flags | Native-only, PIC, C99 `-fexceptions`, C++ no exceptions/RTTI, asynchronous unwind tables, runtime optimization derived from Zig config | Native-only PIC, C99 `-fexceptions`, C++17 no exceptions/RTTI/C++ headers, explicit `-O2 -g0 -DNDEBUG -funwind-tables`; selected header/resource snapshots | Observed Clang 16 emits asynchronous table mode 2 for the producer x86 flags. Exact Aero uses release ThinLTO, one codegen unit, stripped PIE; the retained C Zig control is debug/non-PIE with a UBSan archive. Compiler 18/22, headers (selected 2.17 vs Zig target 2.22), optimization/debug/sanitizer and final executable flags differ. No flag-for-flag/native equivalence assertion. |
+| GNU versions and closure | Exact Aero Zig has no direct GCC version imports; retained C control also has no direct libgcc_s but glibc loads the real library on first native use | Archived definitions are unversioned; existing ordinary Cargo comparison retains twelve GCC unwind imports. Explicit `@GCC_*` and non-unwind helpers are separate requirements | Record symbol **versions and DSO owners**, selected members and runtime loads. A clean DT_NEEDED or maximum-GLIBC comparison is insufficient. No blanket libgcc removal or comparator relaxation. |
+
+### Exact bounded Zig crash and what went wrong
+
+`native-zig-pthread-exit.gdb.log` (2026-11-03), SHA256
+`7f271d320834f1a0f282f4c63bf1817e12dbfb962e1982597fc68fe176551a15`,
+closes the exact-stack gap for the existing C fixture/binary
+`14a27cb5d6d8cf26a51e2a808d73b7b69d6bddc714868169dc7fe5d9ca6fe519`:
+
+```text
+glibc 2.39 pthread_exit
+  -> real libgcc_s _Unwind_ForcedUnwind
+  -> Zig-local __gcc_personality_v0
+  -> Zig-local LLVM _Unwind_GetLanguageSpecificData
+  -> __unw_get_proc_info
+  -> SIGSEGV at a stack address
+```
+
+The source casts the opaque context to an LLVM cursor and calls its virtual
+`getInfo`; the initiating engine here is GCC. This ownership mismatch explains
+this bounded fault. No decoding of GCC private cursor fields or precise corrupted
+instruction layout is claimed. The experiment has **no Rust worker frames**;
+it is not a panic across forbidden FFI, all-Zig failure or glibc 2.22/old-kernel
+execution. The original command without `-lunwind` failed linking and remains
+separate; the successful explicit-unwind build is the one that later crashed.
+
+The earlier reasoning gap was treating API names, archive visibility or a passing
+local Rust catch as proof of process interoperability. C cleanup may ask glibc to
+load a GCC unwinder through a real-library handle; crossed-frame personalities
+may use a different implementation's getters/resume. A complete personality name
+set fixes a link requirement, not this context contract. The pinned compiler-rt
+helper trial and this *different* Zig personality both fail their named controls;
+that is evidence of a shared mechanism in these cases, not proof every coherent
+LLVM strategy is impossible or permission to exclude baseline-supported calls.
+
+A falsifiable next control reuses the unchanged U07/U10/U11 harness and dynamic-GCC
+DSO, swapping only the supplied hidden archive for the preserved Zig 0.17.0
+reference archive, with an actual bfd link and the same Rust 1.90 settings.
+Retain GCC baseline, exact drop/payload oracles, maps, member/dynamic-symbol
+inventory and getter/personality/resume bindings. **Prediction, not performed
+here:** if the same mixed-context mechanism governs those paths, contained U07
+passes but the hidden cross-DSO paths fail as in the LLVM 23.1.4 reference. A Zig
+pass with demonstrated coherent bindings would falsify that prediction and require
+isolating the recipe/member difference; no failure is relabelled expected-green.
+No broad matrix, context bridge, export workaround or production policy follows.
+
+## Producer corner cases and release gates
+
+Use this producer inventory with the consumer-owned [unwinder plan and acceptance
+inventory](https://github.com/rustcommons/cargo-libc/blob/main/docs/UNWINDER-0.4.0-PLAN.md#proposed-evidence-and-acceptance-gates).
+Output selection, receipts, R/I/A/E, freshness and execution guarding belong there;
+this table records producer mechanisms and the evidence needed at that boundary.
+U01–U22 retain their existing verification meanings; the LAT IDs below are existing
+trace entries, not new contracts. A planned gate is not performed evidence.
+
+| Producer case / trace | Mechanism and trigger | Expected oracle | Actual bounded evidence | Remaining gate / disposition |
+| --- | --- | --- | --- | --- |
+| Opaque contexts/visibility — LAT-REQ-031; U07/U10–12 | Static hidden/exported runtime, a crossed cleanup-bearing frame, or an embedding executable changes personality/getter ownership | Baseline-valid originating-runtime round trips retain payload and exact once-only drops; inspect actual bindings | First hidden LLVM reference: U07 pass, U10 abort, U11 SIGSEGV. Corrected minimal exports: those three cases pass on actual bfd/LLD only | **Application blocker** remains: C forced-unwind failure and bypass paths. Construction visibility is not process compatibility. |
+| Native C cleanup/forced unwind — LAT-REQ-009/031; U13/U14 | Same C-only worker with/without `-fexceptions`, libc/libgcc/runtime/helper update | GCC baseline, exactly one cleanup, correct exit/join/cancel value; deferred cancellation only; no Rust frames | Plain controls 9/9 pass. C EH and pinned-helper packets retain exit/cancel SIGSEGVs; exact Zig GDB path above closes that one stack gap on host glibc 2.39 | **Known blocker**, not an expected-success negative test. Requalify actual engine/personality/getter/resume owners and lazy loads; Rust catches or missing direct NEEDED cannot waive it. |
+| DSO/Python/plugins — LAT-REQ-010/031; U07–12/U19 | Multiple DSOs, Python embedding, load order/local/global/deep binding or direct handle lookup | Existing internal catches/error translation and baseline-valid C-unwind boundaries remain usable; measure the same loader scope/order | One Rust DSO mechanism tested; glibc direct-GCC lookup observed. Full PyO3/multiple-DSO/deepbind preservation is unqualified | **Integration/application gate**. An unchanged extension can still run under altered host bindings. Unsupported user-target C++ does not eliminate foreign C++ DSOs with valid C APIs/internal catches; do not require a foreign Rust panic catch. |
+| Panic/rethrow/backtrace/lifetime — LAT-REQ-031; U01–05/U10–12 | Rust/std, personality/source/config, nested cleanup, thread or first-use backtrace changes | Exact drop order, payload identity, continued execution; bounded uncaught/double-panic statuses and meaningful first/repeated/threaded traces | ARM/system fixture sanity and named native round trips only. Zig backtrace passes despite exit/cancel failure. Rust 1.90 source can free a caught exception without Delete | **Broader candidate gate open**. No leaking owner map or exception-class/foreign-private-field ownership guess is approved; trace first lazy loads rather than final maps alone. |
+| Personalities/helpers/version owners — LAT-REQ-007/009/031; U14–16/U21 | Changed source/object set, future compiler helper, arithmetic/C cleanup or explicit GCC-version requirement | Required/provided symbols **and** actual behavior, version/DSO owners and selected members; refuse unsupported requirements rather than host fallback | Factory has nine units, no compiler-rt personality/general helper completeness. Pinned helper selected but C cases still fail; Zig patched helper is distinct. Exact Aero old/new have twelve GCC unwind imports; Zig has none | **Link/application gate open** for arithmetic and explicit `@GCC_*` semantics. GetDataRelBase/GetTextRelBase non-AIX abort paths and future helper additions require behavior checks; inventories are not closure certificates. |
+| ELF architecture/PIC/SONAME — LAT-REQ-007/010/031; U17/U18 | Wrong/truncated/thin archive, foreign object, relocation/configuration or selected libc change | Bounded refusal before use; exact nine ET_REL x86_64 members, chosen visibility; selected libc ET_DYN/SONAME `libc.so.6`; final linked no forbidden text relocations | Four archive parser tests plus preparation gate inspect framing/symbol indices/ranges/allowed RELA forms; LLVM archive built as PIC; source/API/package GO at 558 | **Structural pass only**. Final GNU/LLD linked PIC, complete ABI semantics, runtime target and unsupported architectures are not established by flags/headers. |
+| ABI/library migration/clocks — LAT-REQ-004/007/029/031; U15/U16 | New glibc tables/provider/LLVM imports, explicit old clock version or genuine RT API; script/group/as-needed state | Preserve five libc defaults plus explicit legacy versions and real RT needs, exact library identity/caller order | Existing published clock qualification is retained; no new clock matrix rerun for these docs. ELF versions/default bindings are separate from unwind experiments | **Affected-update regression gate**. Compare old 2.17/2.22 inputs and the added release; no reordering or silent loss of explicit versions. |
+| Header/provider identity versus runtime floor — LAT-REQ-010/011/027/031; U17/U21 | Different selected headers/libc/provider/compiler resource or sysroot profile | Correct independent containment/selection and actual ELF version/owner closure, followed by named runtime evidence | 558 Clang 16 construction uses selected 2.17 headers on an ARM host, with no x86 execution. Stub/SONAME/content checks do not measure library/header consistency or real GLIBC floor | **Route/runtime gate open**. Link-only stubs must never execute; target 2.22 in a binary is not execution on 2.22. Tier 3 stays deferred, not an ordinary-release blocker. |
+| Real glibc behavior outside recorded bundles — LAT-REQ-003/004/031; U13/U17/U21 | Installed libc/libgcc/vendor update, lazy-loading behavior or backport changes while collected symbol/header inputs remain unchanged | Recheck the affected real runtime's forced unwind, backtrace and bindings against a valid baseline | Host glibc 2.39 direct-handle GCC path is demonstrated; ABI lists do not encode that behavioral contract | **Runtime-update gate** independent of producer content keys. No target-kernel/userland or vendor-backport claim from a source/data hash; unchanged bundles cannot certify a changed runtime. |
+| Tools/resources/support closure — LAT-REQ-002/012/031; U17/U18 | Compiler/resource/config/plugin/shared support or archiver changes, including same-path/mtime bytes | Recorded executable/resource/support identity and observed `-MD` files agree; no ambient host supplements, deterministic reproducible construction | Clang 16 gate, environment scrubbing and exact observed dependency checks pass. Closure is caller-declared; loaded libraries/subprocess/plugin/config effects are not completely discovered | **Explicit observation limit**, not hermeticity/authentication. Source/binary/compiler versions and unverified signatures remain distinct; offline sources still need available selected tools/headers. |
+| Native paths/aliases/multiarch/full sysroots — LAT-REQ-010/031; U17/U18 | Literal Unix backslashes, traversal, collisions, link aliases, foreign path syntax or ordered include roots | No escaping/overwriting write before compilation; preserve native names and immutable source. Legitimate contained selection must not become host fallback | c7 deterministic escape reproduced; 558 correction has six independent staging tests/original-case regression and actual package verification | **Containment scope pass; route expansion pending**. Current materialized flat header contract refuses symlinks. Contained aliases and ordered multiarch/full-sysroot staging need separate review; system behavior is unchanged. |
+| Cache/concurrency/input mutation — LAT-REQ-013/031; U18/U20 | Partial generation, changed bytes/mtime, corrupt index/manifest/archive or competing writers | Only complete validated generations publish; existing entries never overwritten/repaired; mutations fail without source changes | 558 preparation/cache gate covers concurrent writers, independent-cache reproducibility, replay, corruption and empty-index refusal; scoped source/API/package review passed | **Preparation scope only**. Read-only recorded-input validation and consumer freshness remain design, not implemented gates. Consumer invalidation may write only its own state, never repair/delete producer caches. |
+| Output-kind/host isolation — LAT-REQ-031; U06/U09/U17/U19/U20 | Mixed executable/shared/Python/host/intermediate/system builds or stale configuration | Shared/Python/host/system/partial outputs retain existing runtime and **no LLVM preparation/tools prerequisites**; actual completed output determines any future executable policy | Producer factory is explicit and unwired; completed-stream classifier evidence is consumer-owned, not proof of runtime/default integration | **Consumer integration gate open**. No eager tool probes or global LLVM search flags; managed/plain-Cargo/native freshness must be demonstrated by the consumer, not inferred from an archive. |
+| Static runtime updates/security/licensing — LAT-REQ-025/026/028/031; U17–22 | LLVM/helper security fix or any source/header/provider/tool/profile patch; new data release or runtime/image update | Review new pin/patch/license and affected closure, rebuild archive, **relink and redeploy affected executables**, trace source/archive/output identities; preserve immutable existing cache keys/releases | 31 source/license files and 558 source package verified. No new runtime/security release, binary redistribution clearance or automated lifecycle is claimed | **Future release/update obligation**. Updating a shared runtime alone does not replace embedded LLVM code. Maintain affected-consumer inventory and repeat applicable old/new floor, C/DSO/Python/helper/clock gates; never silently replace cache entries. Prebuilt legal gate remains; no current vulnerability claim is made. |
+
+This inventory does not select an explicit-only mode or a transparent LLVM default,
+narrow baseline-supported boundaries, or declare every possible coherent strategy
+impossible. Application failures stay visible while source preparation, lifecycle
+contracts, application compatibility and release authorization remain separate.
+
+
 ## Durable source/provider/runtime regression gate
 
+Use the [producer corner-case inventory](#producer-corner-cases-and-release-gates)
+for triggers, actual evidence, oracles and open gates; the consumer owns its ledger.
 Any source, bundle, GLIBC data/provider/header, compiler/resource/tool-support,
 visibility, archive recipe or application binding-policy change must revisit:
 
@@ -284,3 +401,10 @@ including six input/staging tests; root all-target Clippy and fmt pass. The sele
 Clang 16 archive/cache gate passes after native-path changes (both construction
 profiles, concurrent writers and replay); no full Rust/native/runtime matrix was
 rerun. Narrow independent review remains required before preparation integration.
+
+2026-11-03 resolution of that narrow preparation review: independent scoped
+source/API and actual-package GO was received for `558f9cf`; see the
+[current comparison and blocker record](#2026-11-03-pinned-zig-comparison-and-known-mixed-context-blocker).
+The preceding 2026-11-02 validation paragraph retains its then-pending review
+state. No merge, application/default, freshness/full-sysroot integration or
+release GO follows from the scoped preparation approval.

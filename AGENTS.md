@@ -62,7 +62,9 @@ every workflow and its cargo-libc mapping; keep it in step with changes.
   opaque-context guessing. Record actual selected roots, source/license identity,
   tools/resources/declared support files and observed dependencies, with explicit
   unobservable-closure limitations. Follow [the regression checklist](docs/LLVM-UNWIND.md#durable-sourceproviderruntime-regression-gate)
-  when source/provider/header/tool/profile inputs change. General mixed-runtime
+  and [producer corner cases](docs/LLVM-UNWIND.md#producer-corner-cases-and-release-gates)
+  when source/provider/header/tool/profile inputs change, including static-runtime
+  security fixes requiring rebuild/relink of affected consuming executables. General mixed-runtime
   compatibility remains blocked; no default or release decision is implied.
 - Use deterministic outputs and validate malformed inputs without panics.
 - Keep implementation dependencies minimal; start with Rust's standard library.

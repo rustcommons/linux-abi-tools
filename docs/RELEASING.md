@@ -506,3 +506,14 @@ Re-audit bundled source bytes/license/inventory and unresolved helper requiremen
 on source/provider/header/tool/profile updates. Archive construction, runtime
 qualification and binary/SDK distribution clearance are distinct gates. General
 LLVM application interop remains blocked; tier 3 remains deferred.
+
+For producer-specific update triggers, bounded evidence and required oracles, use
+[the maintained LLVM corner-case inventory](LLVM-UNWIND.md#producer-corner-cases-and-release-gates)
+with its existing U01–U22/LAT trace. Static-runtime security/source fixes require
+rebuilding the archive and relinking/redeploying affected executables; a shared
+runtime upgrade cannot patch embedded LLVM code. Record the affected source,
+archive and consuming output identities and repeat applicable helper/version,
+C/DSO/Python, floor/clock and tool/runtime gates. This is a future update/release
+obligation, not currently implemented automatic freshness or a release approval.
+The known bounded mixed-context failures remain application blockers; source/API
+preparation GO at `558f9cf` does not waive them.

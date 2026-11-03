@@ -26,6 +26,11 @@ no tag was moved and no crate was republished.
 
 ### Documentation
 
+- Record producer unwind corner cases, the pinned Zig recipe comparison and exact
+  bounded C forced-unwind failure, and static-runtime security rebuild/relink
+  obligations. Preparation approval remains separate from application/default,
+  consumer lifecycle and release decisions; no behavior change is included.
+
 - Add this changelog and versioned user-facing notes for all seven existing tags;
   distinguish old test evidence, current artifact verification and remaining gaps.
 - Add release navigation, the shared AGENTS release rule v2 and the stdlib-only
