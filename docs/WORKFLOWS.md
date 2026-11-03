@@ -95,6 +95,33 @@ resource exhaustion is an explicit error, not a partial scan.
 linux-abi-scan target/release/app --distro sles-12-sp5 --strict --verbose --tsv
 ```
 
+**Current scope clarification (2026-11-03):** glibc-floor checks exclude
+`GCC_*`, `GLIBCXX_*` and other non-glibc version namespaces. There is no GCC-floor
+option: `--strict` makes warnings affect status and `--verbose` shows informational
+findings; neither adds compiler-runtime validation. A distro preset does not
+establish the installed libgcc version. The following static commands inspect
+that separate dependency without executing the application:
+
+```sh
+readelf --wide --dynamic ./app       # NEEDED and runtime search paths
+readelf --wide --version-info ./app  # required version nodes and library owners
+readelf --wide --dyn-syms ./app      # symbol/version references; retain full output
+
+# Inspect the actual runtime selected in the deployment environment.
+readelf --wide --dyn-syms /actual/path/libgcc_s.so.1
+readelf --wide --version-info /actual/path/libgcc_s.so.1
+readelf --wide --dynamic /actual/path/libgcc_s.so.1
+```
+
+Compare every required symbol/version pair with the runtime's definitions;
+checking only the largest `GCC_*` node is insufficient. Check architecture and
+loader compatibility, the runtime's own dependencies, transitive and `dlopen`
+libraries, and relevant behavior with bounded target-environment evidence.
+These commands do not resolve or qualify the complete runtime closure. The
+producer's `libc-abi glibc elf --input FILE` reports defined dynamic symbols,
+not application GCC requirement validation. See [provider runtime limits](PROVIDER-DELIVERY.md#runtime-compatibility-boundary-2026-11-03)
+and the [cargo-libc user guide](https://github.com/rustcommons/cargo-libc/blob/main/docs/USER-GUIDE.md).
+
 | Check | Confidence | Fails when |
 | --- | --- | --- |
 | `GLIBC_*` version requirements against the glibc floor | Exact | A non-weak requirement is above the floor |

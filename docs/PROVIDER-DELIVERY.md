@@ -366,8 +366,10 @@ refuses it. Every provider therefore links against a stub with the interface of 
   script, and `as` and `ld -shared` build it, as for the glibc stubs. It exports exactly
   those 138 definitions, with GCC's version chain (`GCC_3.0` … `GCC_4.8.0`, each
   inheriting the previous one), and contains no code: every function body is a trap.
-- **At run time** a program uses the target system's real `libgcc_s.so.1`. Any GCC
-  from 4.8.5 on provides every definition the stub has, so the program loads there.
+- **At run time** a program needs a real target `libgcc_s.so.1`, never the stub.
+  Later GCC runtimes can retain the recorded interface, but their package version
+  alone does not establish that an executable will load or behave correctly; see
+  the [current runtime boundary](#runtime-compatibility-boundary-2026-11-03).
 - **Qualification, every release** (glibc provider integration workflow; first
   passed in [run 38193829047](https://github.com/rustcommons/linux-abi-tools/actions/runs/38193829047), all 84 jobs):
   - the stub's exports and version chain equal the record; for 2.17–2.25 the
@@ -378,6 +380,37 @@ refuses it. Every provider therefore links against a stub with the interface of 
     the stub;
   - a link needing a newer interface (the oldest the host's GCC has beyond 4.8.5)
     fails against the stub, while the same object links against the host's library.
+
+### Runtime compatibility boundary (2026-11-03)
+
+This current clarification does not extend the historical qualification results
+above. The GCC 4.8.5 link-only stub constrains references selected through it to
+138 recorded definitions, with version nodes through `GCC_4.8.0`; that ceiling is
+not a claim that every executable needs the newest node. Its function bodies
+trap. Never deploy it as a runtime, including through runtime search paths.
+
+Deployment requires the actual selected runtime to provide each required
+symbol/version pair for the correct architecture, a compatible loader and the
+complete dependency closure. Exercise relevant behavior in the named target
+environment; export membership alone proves neither loading nor unwinding.
+This also applies to explicit providers, full sysroots and libraries loaded
+transitively or with `dlopen`; this producer does not validate an arbitrary
+installed target runtime. `libc-abi provider verify` verifies the provider, not
+that deployment environment.
+
+`GCC_4.2.0`, for example, is a symbol-version namespace, not an installed compiler
+or package version requirement. GCC's [4.8.5 version map](https://github.com/gcc-mirror/gcc/blob/releases/gcc-4.8.5/libgcc/libgcc-std.ver.in)
+places `_Unwind_GetIPInfo` in that namespace. The [GCC libgcc manual](https://gcc.gnu.org/onlinedocs/gccint/Libgcc.html)
+describes arithmetic, exception-handling and other helpers: one executable's
+unwind-only imports do not establish helper completeness for other programs.
+Do not infer the installed libgcc from a glibc floor or distro preset.
+
+For separate inspection of application requirements and runtime definitions,
+see [the supported readelf workflow](WORKFLOWS.md#3-inspect-a-built-binary-tier-1)
+and the maintained [cargo-libc user guide](https://github.com/rustcommons/cargo-libc/blob/main/docs/USER-GUIDE.md).
+A clean glibc scan does not check GCC requirements. Static LLVM replacement is a
+separate unresolved interoperability question; no dependency removal follows
+from this clarification.
 
 ## Remaining questions
 
