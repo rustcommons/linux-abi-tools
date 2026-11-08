@@ -52,6 +52,8 @@ jobs:
       - run: cargo build --release --locked --offline --bin libc-abi
       - name: Prepare and verify every release, and exercise the cache
         run: bash scripts/check-provider-cache.sh target/release/libc-abi gcc-${{ matrix.gcc }}
+      - name: Concurrent source-provider publication and held reader paths
+        run: python3 scripts/check-provider-concurrency.py target/release/libc-abi gcc-${{ matrix.gcc }} "$RUNNER_TEMP/provider-concurrency"
   container-providers:
     name: Container-mode provider for glibc ${{ matrix.glibc }}, compared with source mode
     runs-on: ubuntu-24.04

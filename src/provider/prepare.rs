@@ -21,7 +21,8 @@ pub struct Options {
     /// The host tools: GCC (whose `crtbegin.o`/`crtend.o` the provider uses), and
     /// in `source` mode the binutils that build and verify the objects.
     pub tools: Tools,
-    /// Prepare again even if the cache has this provider.
+    /// Prepare a new immutable generation even if cached. Previously returned
+    /// paths remain valid until explicit cache removal.
     pub force: bool,
     /// `container`: podman or docker; found on PATH when `None`.
     pub engine: Option<PathBuf>,
@@ -183,30 +184,28 @@ fn hash_of(inputs: &[(String, Vec<u8>)]) -> String {
     cache::content_hash(&borrowed)
 }
 
-/// A new temporary directory next to ENTRY, removed again on failure.
-struct Stage {
-    dir: PathBuf,
+/// A private generation next to ENTRY, removed only if it was never published.
+pub(super) struct Stage {
+    pub(super) dir: PathBuf,
+    published: bool,
 }
 
 impl Stage {
-    fn new(entry: &Entry) -> Result<Self, String> {
-        let parent = entry.dir.parent().expect("entries have a parent");
-        fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
-        let name = entry.dir.file_name().expect("named").to_string_lossy();
-        let dir = parent.join(format!(".tmp-{name}-{}", std::process::id()));
-        cache::remove_tree(&dir)?;
-        fs::create_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-        Ok(Self { dir })
+    pub(super) fn new(entry: &Entry) -> Result<Self, String> {
+        Ok(Self {
+            dir: super::cache_selection::allocate(entry)?,
+            published: false,
+        })
     }
 
-    /// Writes the manifest and descriptor and moves the stage to ENTRY.
+    /// Completes a generation and publishes its selection, preserving old paths.
     fn finish(
         self,
         entry: &Entry,
         startup: &Path,
         mut members: Vec<(String, Value)>,
         force: bool,
-    ) -> Result<(), String> {
+    ) -> Result<Entry, String> {
         let mut manifest = vec![
             (
                 "format".into(),
@@ -228,37 +227,37 @@ impl Stage {
             Value::Object(manifest).to_text(),
         )
         .map_err(|e| e.to_string())?;
-        let text = cache::descriptor_text(&entry.dir, &entry.release, startup)?;
+        let text = cache::descriptor_text(&self.dir, &entry.release, startup)?;
         fs::write(self.dir.join("provider.txt"), text).map_err(|e| e.to_string())?;
-        if entry.dir.exists() {
-            if !force {
-                // Prepared concurrently with the same inputs; keep the first.
-                return Ok(());
-            }
-            cache::remove_tree(&entry.dir)?;
-        }
-        fs::rename(&self.dir, &entry.dir).map_err(|e| {
-            format!(
-                "cannot move {} to {}: {e}",
-                self.dir.display(),
-                entry.dir.display()
-            )
-        })
+        self.publish(entry, force)
+    }
+
+    pub(super) fn publish(mut self, entry: &Entry, force: bool) -> Result<Entry, String> {
+        let selected = super::cache_selection::publish(entry, &self.dir, force)?;
+        self.published = selected.dir == self.dir;
+        Ok(selected)
     }
 }
 
 impl Drop for Stage {
     fn drop(&mut self) {
-        let _ = cache::remove_tree(&self.dir);
+        if !self.published {
+            let _ = cache::remove_tree(&self.dir);
+        }
     }
 }
 
-fn reuse(entry: &Entry, force: bool) -> Option<Prepared> {
-    (!force && entry.dir.join("manifest.json").is_file()).then(|| Prepared {
-        entry: entry.clone(),
-        reused: true,
-        notes: Vec::new(),
-    })
+fn reuse(entry: &Entry, force: bool) -> Result<Option<Prepared>, String> {
+    if force {
+        return Ok(None);
+    }
+    Ok(
+        super::cache_selection::current(entry)?.map(|entry| Prepared {
+            entry,
+            reused: true,
+            notes: Vec::new(),
+        }),
+    )
 }
 
 /// Writes the stubs, the loader's link stub and the `libgcc_s` stub.
@@ -318,7 +317,7 @@ fn source(release: &str, snapshot: &Snapshot, options: &Options) -> Result<Prepa
     let host = Host::probe(tools)?;
     let hash = source_inputs(release, snapshot, &host)?;
     let entry = cache::entry(&options.root, release, Mode::Source, &hash.expect("source"));
-    if let Some(prepared) = reuse(&entry, options.force) {
+    if let Some(prepared) = reuse(&entry, options.force)? {
         return Ok(prepared);
     }
     let sources = glibc_provider_sources::Sources::bundled()?;
@@ -365,9 +364,7 @@ fn source(release: &str, snapshot: &Snapshot, options: &Options) -> Result<Prepa
         ));
     }
     if !built.verified() {
-        let failed = entry
-            .dir
-            .with_file_name(format!("source-{}.differences.tsv", entry.hash));
+        let failed = stage.dir.with_extension("differences.tsv");
         let _ = fs::write(&failed, &report);
         let differing: Vec<&str> = built
             .verdicts
@@ -443,7 +440,7 @@ fn source(release: &str, snapshot: &Snapshot, options: &Options) -> Result<Prepa
         Value::Bool(super::build::QUALIFIED_GCC.contains(&host.gcc_major)),
     ));
     members.push(("verification".into(), Value::String(built.summary())));
-    stage.finish(&entry, &host.startup, members, options.force)?;
+    let entry = stage.finish(&entry, &host.startup, members, options.force)?;
     Ok(Prepared {
         entry,
         reused: false,
@@ -557,7 +554,7 @@ fn container(release: &str, snapshot: &Snapshot, options: &Options) -> Result<Pr
             return Err(format!("--keep-work {} already exists", keep.display()));
         }
     }
-    if let Some(prepared) = reuse(&entry, options.force) {
+    if let Some(prepared) = reuse(&entry, options.force)? {
         if options.keep_work.is_some() {
             return Err(format!(
                 "the glibc {release} container provider is cached, so there is no build to keep; add --force"
@@ -572,8 +569,7 @@ fn container(release: &str, snapshot: &Snapshot, options: &Options) -> Result<Pr
     let stage = Stage::new(&entry)?;
     let work = stage.dir.join("work");
     fs::create_dir(&work).map_err(|e| e.to_string())?;
-    let log = entry.dir.with_file_name(format!("container-{hash}.log"));
-    let _ = fs::remove_file(&log);
+    let log = stage.dir.with_extension("log");
     fetch(pins, &work, options.archives.as_deref(), &log)?;
     fs::write(work.join("build-inputs.sh"), pins.script).map_err(|e| e.to_string())?;
     let image = pins.image()?;
@@ -666,11 +662,339 @@ fn container(release: &str, snapshot: &Snapshot, options: &Options) -> Result<Pr
         ]),
     )];
     members.extend(host.manifest());
-    stage.finish(&entry, &host.startup, members, options.force)?;
+    let entry = stage.finish(&entry, &host.startup, members, options.force)?;
     let _ = fs::remove_file(&log);
     Ok(Prepared {
         entry,
         reused: false,
         notes: vec![format!("built by the pinned container build in {image}")],
     })
+}
+
+#[cfg(test)]
+mod publication_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    fn fixture() -> Entry {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let root = std::env::temp_dir().join(format!(
+            "lat-prepare-publication-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        cache::entry(&root, "2.17", Mode::Source, "0123456789abcdef")
+    }
+
+    fn staged(entry: &Entry, bytes: &[u8]) -> Stage {
+        let stage = Stage::new(entry).unwrap();
+        fs::write(stage.dir.join("object"), bytes).unwrap();
+        stage
+    }
+
+    fn cleanup(entry: &Entry) {
+        let root = entry.dir.ancestors().nth(3).unwrap();
+        assert!(root
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("lat-prepare-publication-"));
+        cache::remove_tree(root).unwrap();
+    }
+
+    #[test]
+    fn stages_in_one_process_never_delete_each_other() {
+        let entry = fixture();
+        let first = Stage::new(&entry).unwrap();
+        fs::write(first.dir.join("sentinel"), b"first writer").unwrap();
+        let second = Stage::new(&entry).unwrap();
+        assert_ne!(first.dir, second.dir);
+        assert_eq!(
+            fs::read(first.dir.join("sentinel")).unwrap(),
+            b"first writer"
+        );
+        drop((first, second));
+        cleanup(&entry);
+    }
+
+    #[test]
+    fn forced_preparation_preserves_paths_already_given_to_readers() {
+        let entry = fixture();
+        fs::create_dir_all(&entry.dir).unwrap();
+        let reader_path = entry.dir.join("object");
+        fs::write(&reader_path, b"old reader bytes").unwrap();
+        let stage = Stage::new(&entry).unwrap();
+        fs::write(stage.dir.join("object"), b"new writer bytes").unwrap();
+        stage.finish(&entry, &entry.dir, Vec::new(), true).unwrap();
+        assert_eq!(fs::read(reader_path).unwrap(), b"old reader bytes");
+        let current = super::super::cache_selection::current(&entry)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            fs::read(current.dir.join("object")).unwrap(),
+            b"new writer bytes"
+        );
+        cleanup(&entry);
+    }
+
+    #[test]
+    fn racing_normal_writers_keep_one_complete_winner() {
+        use std::sync::{Arc, Barrier};
+        let entry = fixture();
+        let barrier = Arc::new(Barrier::new(8));
+        let workers: Vec<_> = (0..8)
+            .map(|n| {
+                let entry = entry.clone();
+                let barrier = barrier.clone();
+                std::thread::spawn(move || {
+                    let stage = staged(&entry, &[n]);
+                    barrier.wait();
+                    stage.finish(&entry, &entry.dir, Vec::new(), false).unwrap()
+                })
+            })
+            .collect();
+        let selected: Vec<_> = workers.into_iter().map(|w| w.join().unwrap()).collect();
+        assert!(selected.iter().all(|e| e.dir == selected[0].dir));
+        assert_eq!(
+            cache::list(entry.dir.ancestors().nth(3).unwrap()).unwrap(),
+            vec![selected[0].clone()]
+        );
+        let generations = fs::read_dir(entry.dir.parent().unwrap())
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|e| e.file_type().unwrap().is_dir())
+            .count();
+        assert_eq!(
+            generations, 1,
+            "losers must remove only their own unpublished generation"
+        );
+        cleanup(&entry);
+    }
+
+    #[test]
+    fn racing_forced_writers_and_readers_keep_every_returned_generation() {
+        use std::sync::{Arc, Barrier};
+        let entry = fixture();
+        let first = staged(&entry, b"initial")
+            .finish(&entry, &entry.dir, Vec::new(), false)
+            .unwrap();
+        let barrier = Arc::new(Barrier::new(5));
+        let workers: Vec<_> = (0..4)
+            .map(|n| {
+                let entry = entry.clone();
+                let barrier = barrier.clone();
+                std::thread::spawn(move || {
+                    barrier.wait();
+                    (0..16)
+                        .map(|i| {
+                            let bytes = vec![n, i];
+                            let selected = staged(&entry, &bytes)
+                                .finish(&entry, &entry.dir, Vec::new(), true)
+                                .unwrap();
+                            (selected, bytes)
+                        })
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        barrier.wait();
+        for _ in 0..1000 {
+            let current = super::super::cache_selection::current(&entry)
+                .unwrap()
+                .unwrap();
+            let bytes = fs::read(current.dir.join("object")).unwrap();
+            assert!(bytes == b"initial" || (bytes.len() == 2 && bytes[0] < 4 && bytes[1] < 16));
+        }
+        for worker in workers {
+            for (selected, bytes) in worker.join().unwrap() {
+                assert_eq!(fs::read(selected.dir.join("object")).unwrap(), bytes);
+            }
+        }
+        assert_eq!(fs::read(first.dir.join("object")).unwrap(), b"initial");
+        cleanup(&entry);
+    }
+
+    #[test]
+    fn failed_publication_preserves_legacy_and_competing_destination() {
+        let entry = fixture();
+        fs::create_dir_all(&entry.dir).unwrap();
+        fs::write(entry.dir.join("object"), b"legacy").unwrap();
+        let index = entry
+            .dir
+            .with_file_name(format!(".current-{}-{}", entry.mode, entry.hash));
+        fs::create_dir(&index).unwrap();
+        let stage = staged(&entry, b"new");
+        let private = stage.dir.clone();
+        assert!(stage.finish(&entry, &entry.dir, Vec::new(), true).is_err());
+        assert!(index.is_dir());
+        assert_eq!(fs::read(entry.dir.join("object")).unwrap(), b"legacy");
+        assert!(!private.exists());
+        cleanup(&entry);
+    }
+
+    #[test]
+    fn malformed_selection_refuses_without_fallback_or_repair() {
+        let entry = fixture();
+        let selected = staged(&entry, b"stable")
+            .finish(&entry, &entry.dir, Vec::new(), false)
+            .unwrap();
+        let index = entry
+            .dir
+            .with_file_name(format!(".current-{}-{}", entry.mode, entry.hash));
+        for bad in [
+            "../../escape".to_string(),
+            "/absolute".into(),
+            ".gen-container-0123456789abcdef-1-1".into(),
+            ".gen-source-other-1-1".into(),
+            ".gen-source-0123456789abcdef-1-1/child".into(),
+            "x".repeat(513),
+        ] {
+            let text = format!("libc-abi-provider-selection-1\n{bad}\n");
+            fs::write(&index, &text).unwrap();
+            assert!(super::super::cache_selection::current(&entry).is_err());
+            assert!(staged(&entry, b"loser")
+                .finish(&entry, &entry.dir, Vec::new(), false)
+                .is_err());
+            assert_eq!(fs::read_to_string(&index).unwrap(), text);
+        }
+        assert_eq!(fs::read(selected.dir.join("object")).unwrap(), b"stable");
+        cleanup(&entry);
+    }
+
+    #[test]
+    fn legacy_discovery_export_import_and_quiescent_remove_round_trip() {
+        let entry = fixture();
+        let first = staged(&entry, b"old")
+            .finish(&entry, &entry.dir, Vec::new(), false)
+            .unwrap();
+        cache::copy_tree(&first.dir, &entry.dir).unwrap();
+        fs::write(
+            entry.descriptor(),
+            cache::descriptor_text(&entry.dir, &entry.release, &entry.dir).unwrap(),
+        )
+        .unwrap();
+        let index = entry
+            .dir
+            .with_file_name(format!(".current-{}-{}", entry.mode, entry.hash));
+        fs::remove_file(&index).unwrap();
+        assert_eq!(reuse(&entry, false).unwrap().unwrap().entry.dir, entry.dir);
+        let latest = staged(&entry, b"latest")
+            .finish(&entry, &entry.dir, Vec::new(), true)
+            .unwrap();
+        let root = entry.dir.ancestors().nth(3).unwrap();
+        assert_eq!(cache::list(root).unwrap(), vec![latest.clone()]);
+        let export = root.join("export");
+        let exported = cache::export(&latest, &export).unwrap();
+        assert_eq!(exported.file_name().unwrap(), "source-0123456789abcdef");
+        let imported_root = root.join("import");
+        let imports = cache::import(&export, &imported_root, root).unwrap();
+        assert_eq!(imports.len(), 1);
+        assert_eq!(fs::read(imports[0].dir.join("object")).unwrap(), b"latest");
+        assert!(fs::read_to_string(imports[0].descriptor())
+            .unwrap()
+            .contains(imports[0].dir.to_str().unwrap()));
+        assert_eq!(
+            cache::import(&export, &imported_root, root).unwrap(),
+            imports
+        );
+        super::super::cache_selection::remove(&latest).unwrap();
+        assert!(cache::list(root).unwrap().is_empty());
+        assert!(!first.dir.exists() && !latest.dir.exists() && !entry.dir.exists());
+        cleanup(&entry);
+    }
+
+    #[test]
+    fn open_selection_reader_keeps_one_complete_old_snapshot() {
+        let entry = fixture();
+        let old = staged(&entry, b"old")
+            .finish(&entry, &entry.dir, Vec::new(), false)
+            .unwrap();
+        let index = entry
+            .dir
+            .with_file_name(format!(".current-{}-{}", entry.mode, entry.hash));
+        let expected = fs::read(&index).unwrap();
+        let mut reader = fs::File::open(&index).unwrap();
+        let new = staged(&entry, b"new")
+            .finish(&entry, &entry.dir, Vec::new(), true)
+            .unwrap();
+        let mut observed = Vec::new();
+        std::io::Read::read_to_end(&mut reader, &mut observed).unwrap();
+        assert_eq!(observed, expected);
+        assert_ne!(fs::read(&index).unwrap(), expected);
+        assert_eq!(fs::read(old.dir.join("object")).unwrap(), b"old");
+        let root = entry.dir.ancestors().nth(3).unwrap();
+        assert_eq!(
+            cache::current(root, &entry.release, entry.mode, &entry.hash).unwrap(),
+            Some(new)
+        );
+        drop(reader);
+        cleanup(&entry);
+    }
+
+    #[test]
+    fn container_mode_uses_the_same_immutable_publication_contract() {
+        let base = fixture();
+        let root = base.dir.ancestors().nth(3).unwrap();
+        let entry = cache::entry(root, "2.17", Mode::Container, &base.hash);
+        let old = staged(&entry, b"old container")
+            .finish(&entry, &entry.dir, Vec::new(), false)
+            .unwrap();
+        let new = staged(&entry, b"new container")
+            .finish(&entry, &entry.dir, Vec::new(), true)
+            .unwrap();
+        assert_eq!(
+            cache::current(root, "2.17", Mode::Container, &entry.hash).unwrap(),
+            Some(new.clone())
+        );
+        assert_eq!(cache::list(root).unwrap(), vec![new]);
+        assert_eq!(fs::read(old.dir.join("object")).unwrap(), b"old container");
+        cleanup(&entry);
+    }
+
+    #[test]
+    fn explicit_quiescent_removal_handles_orphans_and_corrupt_selection() {
+        let entry = fixture();
+        let orphan = staged(&entry, b"interrupted writer");
+        let path = orphan.dir.clone();
+        std::mem::forget(orphan); // Model a killed writer, which does not run Drop.
+        let root = entry.dir.ancestors().nth(3).unwrap();
+        assert!(cache::list(root).unwrap().is_empty());
+        assert_eq!(
+            super::super::cache_selection::candidates(root).unwrap(),
+            vec![entry.clone()]
+        );
+        let index = entry
+            .dir
+            .with_file_name(format!(".current-{}-{}", entry.mode, entry.hash));
+        fs::write(&index, b"corrupt selection").unwrap();
+        assert!(cache::list(root).is_err());
+        super::super::cache_selection::remove(&entry).unwrap();
+        assert!(!path.exists() && !index.exists());
+        assert!(cache::list(root).unwrap().is_empty());
+        cleanup(&entry);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn selected_generation_and_index_symlinks_are_refused() {
+        use std::os::unix::fs::symlink;
+        let entry = fixture();
+        let selected = staged(&entry, b"owned")
+            .finish(&entry, &entry.dir, Vec::new(), false)
+            .unwrap();
+        let index = entry
+            .dir
+            .with_file_name(format!(".current-{}-{}", entry.mode, entry.hash));
+        let saved = entry.dir.with_file_name("saved-selection");
+        fs::rename(&index, &saved).unwrap();
+        symlink(&saved, &index).unwrap();
+        assert!(super::super::cache_selection::current(&entry).is_err());
+        fs::remove_file(&index).unwrap();
+        fs::rename(&saved, &index).unwrap();
+        let moved = selected.dir.with_file_name("outside-generation");
+        fs::rename(&selected.dir, &moved).unwrap();
+        symlink(&moved, &selected.dir).unwrap();
+        assert!(super::super::cache_selection::current(&entry).is_err());
+        cleanup(&entry);
+    }
 }

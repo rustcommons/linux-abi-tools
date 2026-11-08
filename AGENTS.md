@@ -56,6 +56,11 @@ every workflow and its cargo-libc mapping; keep it in step with changes.
   `src/provider/build.rs` follows glibc-provider's `glibc-provider-replay`; keep the
   two in step.
 - Use deterministic outputs and validate malformed inputs without panics.
+- Provider preparation must not delete or mutate published generations. Stage
+  with unique, exclusively created names; publish complete generations through
+  an atomic selection file and retain previous reader paths. Cleanup may remove
+  only an unpublished generation owned by that attempt. Explicit removal needs
+  quiescent readers/writers; test forced/normal concurrency and publication failure.
 - Keep implementation dependencies minimal; start with Rust's standard library.
 - Ask about unresolved product decisions; do not claim Zig parity prematurely.
 

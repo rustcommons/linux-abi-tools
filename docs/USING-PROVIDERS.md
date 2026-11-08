@@ -78,9 +78,12 @@ Providers are cached in `$CARGO_LIBC_PROVIDER_DIR`, otherwise in
 `--cache DIR` to choose another location. Each entry has this path:
 
 ```text
-x86_64-unknown-linux-gnu/glibc-2.28/source-<hash>/
-  provider.txt  manifest.json  libraries.tsv  verification.tsv
-  sysroot/  stubs/  compiler-runtime/
+x86_64-unknown-linux-gnu/glibc-2.28/
+  .current-source-<hash>                 # atomic generation selector (unreleased)
+  .gen-source-<hash>-<pid>-<counter>/    # immutable published generation
+    provider.txt  manifest.json  libraries.tsv  verification.tsv
+    sysroot/  stubs/  compiler-runtime/
+  source-<hash>/                        # existing legacy entries remain usable
 ```
 
 The hash covers everything the provider depends on:
@@ -89,8 +92,53 @@ The hash covers everything the provider depends on:
 - your GCC, binutils and `crtbegin.o`/`crtend.o`.
 
 So an upgraded compiler yields a new entry rather than a stale one. `manifest.json`
-records each file's SHA-256, and `verify` checks them all. Delete an entry with
-`remove`, or delete the directory itself.
+records each file's SHA-256, and `verify` checks them all. Reclaim an entry with
+`provider remove` after stopping builds; manually deleting just a selected
+generation can leave invalid selection metadata behind.
+
+### Cache concurrency
+
+**Unreleased change:** published libc-abi-tools 0.5.0 and cargo-libc 0.6.0 still
+have the older replacement behavior. The producer fix needs a future minor
+release and downstream minimum adoption before installed cargo-libc gets it.
+
+Updated preparation and import write complete private generations with unique,
+exclusively created names. Normal preparation keeps the first published winner;
+losing writers clean up only their own unpublished data. `prepare --force`
+rebuilds and atomically replaces a small selection file, never the provider
+directory. Concurrent forced writers may each return their own complete
+generation; the last successful selection is current. Every returned descriptor
+continues to name its original generation. Failed preparation/publication leaves
+earlier generations intact. The selector is read once per lookup, so readers
+obtain a complete old or new choice rather than a mixture.
+
+Use the actual path printed by `prepare`, `path`, `list` or `import`; never
+construct it from the content hash. Rust API callers use `cache::current` to
+resolve a hash; `cache::entry` supplies only its logical legacy base location.
+Descriptor v1 and the exported `glibc-RELEASE/MODE-HASH` layout stay unchanged.
+Saved plain-Cargo settings or explicit descriptors remain bound to their original
+generation. Regenerate settings with `cargo libc env`, or select the descriptor
+printed by `provider path`, to adopt a later generation. Changed target paths can
+cause Cargo to rebuild even when the preparation input hash is unchanged.
+Legacy cache directories are discovered when no selector exists and are not moved
+or deleted by forced preparation. Invalid selectors refuse rather than silently
+falling back. Selection validates structural identity/completeness; full payload
+inventory checking remains the explicit `verify` operation.
+
+Published generations are retained to protect existing readers, including saved
+plain-Cargo configurations. They consume extra disk space. **Stop builds and
+other cache operations before `provider remove` or manual deletion.** Explicit
+removal reclaims the logical entry's legacy directory, current/retired generations
+and interrupted orphan generations, including when selection metadata is corrupt.
+It deliberately invalidates saved descriptor paths. There is no automatic garbage
+collection or lock/lease coordination for destructive removal.
+
+Use a caller-controlled local cache filesystem supporting same-filesystem hard
+links and atomic file replacement. Unsupported publication fails; it does not
+delete the installed provider as a fallback. This is not authenticated delivery,
+crash-durable storage or a guarantee against manual edits, older binaries,
+filesystem failures or network/distributed-filesystem semantics. Compiler startup
+inputs outside the cache remain independently managed host files.
 
 ## Offline and air-gapped machines
 
@@ -124,7 +172,7 @@ archive. On a machine that cannot reach them:
    explicitly; `import` prints its path, and so does `list`:
 
    ```sh
-   cargo libc build --provider ~/.cargo/libc-providers/x86_64-unknown-linux-gnu/glibc-2.17/container-<hash>/provider.txt \
+   cargo libc build --provider /path/printed/by/import/provider.txt \
      --target x86_64-unknown-linux-gnu.2.17 --artifact target/x86_64-unknown-linux-gnu/release/app -- --release
    ```
 

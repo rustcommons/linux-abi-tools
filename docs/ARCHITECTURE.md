@@ -64,6 +64,14 @@ refuses unreviewed differences. The container route retains real runtime
 libraries for tests; source mode's loader file is a link stub, never executed.
 See [provider details and limits](USING-PROVIDERS.md).
 
+Unreleased cache publication completes one immutable provider generation before
+atomically updating a selection file. Callers receive that generation's actual
+descriptor path, which later forced preparations do not invalidate. This refines
+the cache inside node V without changing either input route or descriptor v1.
+See [cache concurrency](USING-PROVIDERS.md#cache-concurrency), including retained
+disk usage and explicitly destructive removal. Published 0.5.0 retains the older
+cache implementation until the producer fix and downstream adoption are released.
+
 An explicit target-link transformation is available separately from the raw
 provider paths shown above: [`provider::link_profile`](../src/provider/link_profile.rs)
 validates actual selected libc/librt files, then derives a content-addressed

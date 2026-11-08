@@ -40,6 +40,10 @@ list prints every cached provider. path prints the descriptor prepare would use
 (source, else container, without --mode). verify rechecks every file against the
 manifest and the stubs against the ABI lists. export copies providers to DIR for
 another machine; import adds them, with this machine's GCC startup files.
+--force selects a new complete generation without removing old provider paths.
+Use the descriptor returned by prepare/path, not a constructed cache directory.
+Old generations consume space until remove, which requires stopping builds and
+other cache operations first. Descriptor v1 and exported layouts are unchanged.
 "
     )
 }
@@ -204,8 +208,8 @@ pub fn run(args: &[OsString], program: &str) -> Result<(), String> {
             for mode in modes {
                 if let Some(hash) = prepare::current_hash(release, mode, &snapshot, &tools)? {
                     let entry = cache::entry(&root, release, mode, &hash);
-                    if entry.dir.join("manifest.json").is_file() {
-                        emit(&format!("{}\n", entry.descriptor().display()))?;
+                    if let Some(selected) = super::cache_selection::current(&entry)? {
+                        emit(&format!("{}\n", selected.descriptor().display()))?;
                         return Ok(());
                     }
                 }
@@ -251,8 +255,13 @@ pub fn run(args: &[OsString], program: &str) -> Result<(), String> {
         }
         "remove" => {
             let release = if all { None } else { Some(glibc()?) };
-            for entry in selected(release)? {
-                cache::remove_tree(&entry.dir)?;
+            for entry in super::cache_selection::candidates(&root)?
+                .into_iter()
+                .filter(|e| {
+                    release.is_none_or(|r| e.release == r) && mode.is_none_or(|m| e.mode == m)
+                })
+            {
+                super::cache_selection::remove(&entry)?;
                 emit(&format!("removed {}\n", entry.dir.display()))?;
             }
         }
