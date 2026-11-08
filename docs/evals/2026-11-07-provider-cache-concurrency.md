@@ -77,6 +77,42 @@ builds and old-system/musl/static-host qualification are not newly claimed.
 
 ## Final native gates
 
-The bounded all-28-release source/cache check and the final multi-process check
-are running; results must be recorded before merge. Logs live in coordinator
-thread storage / WSL at `rustcommons-provider-cache-concurrency/final-gates`.
+The optimized Rust 1.90 source tool at `f1aef1cf1b09ba483825df5056a2562cafbd6815`
+passed the complete existing `check-provider-cache.sh` with GCC **13.3.0**:
+all 28 releases prepared and verified, cached reuse, forced rebuild, export/import,
+tampering detection, removal and unsupported-input refusals. Exit 0, 587.32 seconds.
+The following real multi-process gate also passed (14.35 seconds, 2,670 complete
+held-path observation cycles). This covers the shared publication implementation;
+the subsequent single-release filtering delta has its own Windows/Linux CLI test.
+
+Final source `7b1125b956b38d762b6f8510dcaa49317eb34bdc` was rebuilt under
+Rust 1.90 release mode and passed the real multi-process gate again: three normal
+writers, three forced writers, **2,654** complete observation cycles over five
+held files, and verify/export/import/remove. An actual installed cargo-libc
+**0.6.0** then built and ran the C/CMake fixture using the **old** descriptor
+after a forced preparation selected a different generation. Both C and CMake
+reported glibc 2.17 headers. This is modern GNU/WSL host execution, not an old-OS
+or old-kernel qualification; explicit descriptor interoperability is not registry
+adoption of the unreleased producer API.
+
+`cargo +1.90.0 package --workspace --locked --offline` verified all five source
+archives at clean `7b1125b`, with exact VCS/source payloads. Root comparison to
+official libc-abi-tools 0.5.0 finds only the provider implementation changes and
+new `src/provider/cache_selection.rs`, plus generated metadata. These are
+**unreleased source-verification archives**, not replacements for published 0.5.0.
+No versions, dependencies or lock files changed.
+
+The preliminary debug-build all-release run prepared all 28 releases and verified
+2.17/2.18 before being deliberately interrupted during a path query (exit 143)
+to switch expensive inventory checks to the optimized build. That partial run is
+retained and is not counted as passing. Both later optimized gates above completed
+normally; the final cargo compatibility smoke also completed normally.
+
+Evidence packet: **120 verified member hashes**, 161,227 bytes, SHA256
+`b6b43d0914453e3d55bf6703f14a28cb998c3f005c060c0aa567a4f1ae0e210d`.
+The packet includes logs, summaries, source-package audits and all five source
+archives. It is retained in coordinator thread storage as
+`provider-cache-evidence/provider-cache-proof.tar.gz`, with the WSL originals
+under `/tmp/rustcommons-provider-cache-concurrency`. Later excluded documentation
+updates preserve this source and package evidence; a later VCS identity is not
+the tested archive identity. Independent review is still required before merge.
