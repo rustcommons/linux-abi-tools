@@ -33,6 +33,10 @@ successful selection becomes current. Legacy directories remain untouched.
 - Public current-lookup release/hash validation; existing broken-pipe export
   behavior; default and no-default builds. Cache `entry` constructs a logical
   base path; `current` resolves actual generation paths.
+- A separate CLI regression reproduced unrelated malformed selections blocking a
+  valid single-release export. Release/mode filtering now happens before selection
+  resolution, avoiding repeated whole-cache manifest parsing. The regression
+  passes on Windows and Linux; unfiltered listing still reports corrupt selections.
 
 Windows/NTFS Rust 1.99 root default/no-default tests and Clippy passed, including
 ten publication tests. Linux/WSL Rust 1.90 root tests passed, including eleven

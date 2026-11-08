@@ -141,10 +141,16 @@ pub fn run(args: &[OsString], program: &str) -> Result<(), String> {
         return Err("--all conflicts with --glibc".into());
     }
     let selected = |release: Option<&str>| -> Result<Vec<cache::Entry>, String> {
-        Ok(cache::list(&root)?
+        let mut entries = Vec::new();
+        for entry in super::cache_selection::candidates(&root)?
             .into_iter()
             .filter(|e| release.is_none_or(|r| e.release == r) && mode.is_none_or(|m| e.mode == m))
-            .collect())
+        {
+            if let Some(selected) = super::cache_selection::current(&entry)? {
+                entries.push(selected);
+            }
+        }
+        Ok(entries)
     };
     match command {
         "prepare" => {
