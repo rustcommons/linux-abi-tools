@@ -1,5 +1,9 @@
 # Releasing
 
+Producer **0.6.0 is in preparation, not published**. See the
+[preparation record](RELEASE-0.6.0.md) and [candidate user notes](releases/v0.6.0.md).
+The latest verified published producer version remains 0.5.0.
+
 See the [published 0.5.0 record](#published-050-archives-and-documentation)
 for current official checksums, source identity and documentation status.
 The [0.5.0 preparation](#050-hash-api-release-preparation-2026-11-03) and

@@ -175,9 +175,9 @@ from a distribution's glibc (measured for CentOS 7.9 and 2.17).
 - [x] Implement immutable provider generations with atomic selection for forced
   preparation; retain paths already given to readers and use exclusive staging
   names. [Concurrency contract](USING-PROVIDERS.md#cache-concurrency), LAT-REQ-013.
-  This is unreleased: installed producer 0.5.0/cargo-libc 0.6.0 still have the
-  original replacement window. A producer minor release and downstream adoption
-  remain separate gates. Destructive removal requires quiescent readers/writers;
+  Producer [0.6.0 is in preparation](RELEASE-0.6.0.md), not published: installed
+  producer 0.5.0/cargo-libc 0.6.0 still have the original replacement window.
+  Producer publication and downstream adoption remain separate gates. Destructive removal requires quiescent readers/writers;
   automatic generation reclamation and crash-durable/distributed storage remain
   outside this fix.
 
