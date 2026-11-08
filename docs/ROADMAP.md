@@ -1,7 +1,8 @@
 # Roadmap
 
+[0.6.0 release record](RELEASE-0.6.0.md) records the current producer release.
 [0.3.3 release qualification](REVIEW-FIXES.md#published-033-archives-and-documentation)
-records the current release. [0.3.2 qualification](RELEASE-CANDIDATE-0.3.2.md) and
+is historical. [0.3.2 qualification](RELEASE-CANDIDATE-0.3.2.md) and
 [its dated plan](RELEASE-PLAN.md) preserve historical scope and dependency analysis.
 
 Open work only. What exists and how it was tested is in
@@ -175,9 +176,9 @@ from a distribution's glibc (measured for CentOS 7.9 and 2.17).
 - [x] Implement immutable provider generations with atomic selection for forced
   preparation; retain paths already given to readers and use exclusive staging
   names. [Concurrency contract](USING-PROVIDERS.md#cache-concurrency), LAT-REQ-013.
-  Producer [0.6.0 is in preparation](RELEASE-0.6.0.md), not published: installed
-  producer 0.5.0/cargo-libc 0.6.0 still have the original replacement window.
-  Producer publication and downstream adoption remain separate gates. Destructive removal requires quiescent readers/writers;
+  Producer [0.6.0 is published](RELEASE-0.6.0.md). Older producer 0.5.0 and
+  cargo-libc 0.6.0 still have the original replacement window. Downstream
+  minimum adoption and unpatched registry qualification remain pending. Destructive removal requires quiescent readers/writers;
   automatic generation reclamation and crash-durable/distributed storage remain
   outside this fix.
 

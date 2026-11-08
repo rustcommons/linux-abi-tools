@@ -1,8 +1,13 @@
-# Producer 0.6.0 release preparation
+# Producer 0.6.0 release record
 
 ## Scope and status
 
-Prepared at the maintainer's request, 2026-11-08 UTC. **Not published.** This is
+**Published 2026-11-08 UTC** from `f409ae8e2b379e414d94809c8f4e6627d29eca20`.
+All five archives, the annotated tag, docs.rs and a fresh registry installation
+are verified below. GitHub Release publication/full published-docs verification
+remain pending at this bookkeeping candidate.
+
+Preparation began at the maintainer's request on the same UTC date. This is
 the five-crate linux-abi-tools workspace release, not the already released
 cargo-libc 0.6.0. Implementation PR14 merged normally as
 `baf407084ea0d6a6b8fdfeb7d0ef9f79956429f9`; its independently approved tree
@@ -83,10 +88,11 @@ Later excluded-doc changes do not change package inputs, but fresh VCS metadata
 and temporary-registry lock checksums can change archive hashes. Independent
 release review and exact-head release-doc CI remain required before merge.
 
-## Publication and downstream plan
+## Original preparation plan and downstream boundary
 
-No merge, publication, tag or GitHub Release is performed by preparation.
-After independent release review and explicit publication authorization:
+The preparation-only candidate did not publish or merge. The maintainer later
+authorized publication; the sequence below was the plan. Producer archive/tag
+verification is now complete; consumer adoption remains pending:
 
 1. Merge normally; compare the exact merge tree/package inputs to the qualified
    candidate. Repackage with clean merged VCS identity.
@@ -111,3 +117,53 @@ Retained generations cost disk; no automatic GC, crash-durable storage,
 distributed-filesystem or authenticity guarantee is added. Real-container and
 old-system/tier 3/musl/static-host gaps remain explicit. LLVM research, prebuilt
 legal gates and other review follow-ups remain separate and unchanged.
+
+## Published archives and fresh installation (2026-11-08 UTC)
+
+[PR15](https://github.com/rustcommons/linux-abi-tools/pull/15) merged normally
+as `f409ae8e2b379e414d94809c8f4e6627d29eca20`, preserving the approved
+`b9c5e2533d7931c4b20e2dd3ae2a3a683190d009` tree. Independent release review
+verified all 1,194 candidate proof hashes. Exact candidate
+[docs CI42441937650](https://github.com/rustcommons/linux-abi-tools/actions/runs/42441937650)
+and merged [docs CI42448883941](https://github.com/rustcommons/linux-abi-tools/actions/runs/42448883941)
+passed. The separately triggered broad CI is not assumed passed here; unchanged
+source/kernel/clock gates retain their independently reviewed scope.
+
+The sole publisher used Rust/Cargo 1.90 `publish --locked -p CRATE` in dependency
+order. All five official archives are non-yanked, match both crates.io API and
+sparse-index SHA-256 values, and carry clean VCS at the exact merge. File lists
+and source/README/license payloads match the qualified candidate. Differences
+are VCS metadata and, in dependent packages, temporary-versus-official registry
+checksums in generated locks; every packaged registry checksum was checked.
+
+| Crate 0.6.0 | Official SHA-256 | Bytes | Files |
+| --- | --- | ---: | ---: |
+| [linux-targets](https://crates.io/crates/linux-targets/0.6.0) | `1ee91ba9349ba6303cdc3e4aa4789321bb3be739a2dd07d8ff3889fbf7f21980` | 7,407 | 8 |
+| [kernel-abi-tools](https://crates.io/crates/kernel-abi-tools/0.6.0) | `9424376719765b7cafc3980c656216ee15704b177a81e146fb8d23f7799d667d` | 24,022 | 15 |
+| [linux-abi-scan](https://crates.io/crates/linux-abi-scan/0.6.0) | `6a36d0e3d933ad5fae54b70e8f1e6caa6419cbebcf020e7e5e3c0635b91c3504` | 23,877 | 11 |
+| [libc-abi-tools](https://crates.io/crates/libc-abi-tools/0.6.0) | `368579c7f6401ead63390c8c273da9d9840a905438b62e603917bb169e084d6e` | 84,541 | 84 |
+| [linux-abi-tools](https://crates.io/crates/linux-abi-tools/0.6.0) | `08b9f17a2f8486d5d8d892e428901e7e5753da9d94e593f903228f487437e715` | 3,989 | 7 |
+
+Annotated [v0.6.0](https://github.com/rustcommons/linux-abi-tools/tree/v0.6.0)
+peels to the release merge; no old tag moved. All five docs.rs builds succeeded
+and all five versioned API pages were retrieved, including the new
+[cache::current](https://docs.rs/libc-abi-tools/0.6.0/libc_abi_tools/provider/cache/fn.current.html).
+
+A fresh Cargo home and isolated install root ran
+`cargo install libc-abi-tools --version 0.6.0 --locked` against crates.io on
+x86_64 Linux/WSL with Rust 1.90. Installed version/help and the permanent real
+source-provider process gate passed: three normal writers, three forced writers,
+2,331 complete held-file cycles and no errors.
+Installed executable SHA-256:
+`a415ace470ce7de0df158e7cf52feaef703edb3d49bfe1af0e2845d0a75ea094`.
+This is producer CLI/source preparation evidence, not Cargo adoption or
+container/old-system qualification.
+
+The published proof packet includes official archives, exact commands/logs,
+the installed executable and process evidence: 1,205 hashed files,
+7,878,287 bytes, SHA-256
+`e56ce0c4729f2347c4ec60042a202df6140561ea170a7748520a72ecc36ee398`.
+
+GitHub Release notes and full published-documentation verification are pending
+this excluded-documentation review. No crate upload or tag is repeated during
+bookkeeping. Cargo's minimum, registry lock and release remain unchanged here.

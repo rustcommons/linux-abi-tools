@@ -17,8 +17,8 @@ No additional changes assigned.
 
 ## [0.6.0] - 2026-11-08
 
-**Release candidate; not published.** [Notes](docs/releases/v0.6.0.md) and
-[preparation record](docs/RELEASE-0.6.0.md). Date is the UTC preparation date.
+Published to crates.io on this UTC date. [Notes](docs/releases/v0.6.0.md) and
+[release record](docs/RELEASE-0.6.0.md).
 
 ### Fixed
 
@@ -30,7 +30,7 @@ No additional changes assigned.
 - `cache::current` resolves the selected generation; use returned descriptor paths
   instead of constructing them. Legacy directories and descriptor v1 remain
   supported. Old generations consume space until explicit, quiescent removal.
-  This API/cache contract is prepared for producer minor 0.6.0
+  This API/cache contract ships in producer minor 0.6.0
   and requires deliberate downstream adoption; published producer 0.5.0 and cargo-libc 0.6.0 do
   not contain the fix. See [cache concurrency](docs/USING-PROVIDERS.md#cache-concurrency).
 

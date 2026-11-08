@@ -98,10 +98,11 @@ generation can leave invalid selection metadata behind.
 
 ### Cache concurrency
 
-**Producer 0.6.0 candidate:** [release preparation](RELEASE-0.6.0.md) is in
-progress, not publication. Published libc-abi-tools 0.5.0 and cargo-libc 0.6.0
-still have the older replacement behavior. Producer publication and downstream
-minimum adoption are needed before installed cargo-libc gets the fix.
+**Producer 0.6.0 is published:** the [release record](RELEASE-0.6.0.md)
+verifies official archives and a fresh registry installation. Older
+libc-abi-tools 0.5.0 and cargo-libc 0.6.0 still have the replacement window.
+Cargo must adopt the new minimum and qualify its real registry installation
+before a consumer release includes the fix.
 
 Updated preparation and import write complete private generations with unique,
 exclusively created names. Normal preparation keeps the first published winner;
