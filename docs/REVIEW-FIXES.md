@@ -167,6 +167,11 @@ identity. No provider rebuild or package release is needed for this source revie
   use. Reader/writer coordination and recovery are separate design work.
 
 [Roadmap follow-ups](ROADMAP.md#review-follow-ups-2026-11-01) track these limits.
+Unreleased follow-up, 2026-11-07: the forced-cache limitation above remains true
+of the published versions described by this historical record. The
+[generation-based repair and tests](evals/2026-11-07-provider-cache-concurrency.md)
+implement reader-path retention separately; publication and downstream adoption
+are still required. This does not resolve the other container or signal items.
 Real old-system qualification remains deferred; containers on a modern kernel
 are not tier 3 evidence.
 

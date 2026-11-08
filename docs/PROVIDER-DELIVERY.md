@@ -264,7 +264,7 @@ startup files.
 ### Cache
 
 ```text
-$CARGO_HOME/libc-providers/x86_64-unknown-linux-gnu/glibc-2.28/<mode>-<content-hash>/
+$CARGO_HOME/libc-providers/x86_64-unknown-linux-gnu/glibc-2.28/.gen-<mode>-<hash>-<pid>-<counter>/
     provider.txt  sysroot/  stubs/  compiler-runtime/  manifest.json
     libraries.tsv  verification.tsv (source)  run-runtime/ (container)
 ```
@@ -281,8 +281,14 @@ hash covers every input, so changed inputs never reuse a stale provider:
 Each entry's `manifest.json` records its mode, origin, tools, verification summary,
 and every file's SHA-256 and size (symbolic links by target), which `verify` and
 `import` recheck. `verify` also rechecks the eight stubs against the ABI lists and
-the `libgcc_s` stub against GCC 4.8.5's interface. Preparation happens in a temporary
-directory beside the entry and is moved into place only when complete.
+the `libgcc_s` stub against GCC 4.8.5's interface. Unreleased preparation uses
+immutable generations and an atomic `.current-<mode>-<hash>` selection file;
+only complete generations become visible to lookup. Forced preparation retains
+all previous reader paths. Legacy directories remain discoverable; descriptor
+v1 and exported layouts are unchanged. The [concurrency contract](USING-PROVIDERS.md#cache-concurrency)
+explains supported filesystems, corruption/failure behavior, disk retention and
+the requirement to stop builds before explicit removal. Published 0.5.0 retains
+the original remove-before-rename behavior until a new version is adopted.
 
 ### Descriptor
 

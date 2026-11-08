@@ -1,14 +1,17 @@
 //! Prepared providers on disk:
 //!
 //! ```text
-//! ROOT/x86_64-unknown-linux-gnu/glibc-2.28/<mode>-<content hash>/
+//! ROOT/x86_64-unknown-linux-gnu/glibc-2.28/.gen-<mode>-<hash>-<pid>-<counter>/
 //!     provider.txt  sysroot/  stubs/  compiler-runtime/  manifest.json
+//! ROOT/x86_64-unknown-linux-gnu/glibc-2.28/.current-<mode>-<hash>
 //! ```
 //!
 //! ROOT is `$CARGO_LIBC_PROVIDER_DIR`, else `$CARGO_HOME/libc-providers`, else
 //! `~/.cargo/libc-providers`. The content hash covers every input of the
 //! preparation, so changed inputs never reuse a stale provider. `manifest.json`
 //! records the mode, origin, tools, and every file's SHA-256 and size.
+//! The selection is atomic; published generations are retained until explicit
+//! removal. Legacy `<mode>-<hash>` directories remain discoverable and untouched.
 use super::{json::Value, Provider, FORMAT, RELEASES, SONAMES};
 use crate::{elf, glibc::Snapshot, libgcc, sha256, stub, version::Version};
 use std::{
@@ -111,7 +114,8 @@ pub struct Entry {
     pub mode: Mode,
     /// The content hash of its preparation inputs, in hexadecimal.
     pub hash: String,
-    /// Its directory: `ROOT/x86_64-unknown-linux-gnu/glibc-RELEASE/MODE-HASH`.
+    /// Its directory: a legacy entry or one immutable selected generation.
+    /// Use this returned path rather than constructing a physical cache path.
     pub dir: PathBuf,
 }
 
@@ -139,7 +143,8 @@ pub fn release_dir(root: &Path, release: &str) -> PathBuf {
     root.join(TARGET).join(format!("glibc-{release}"))
 }
 
-/// Where a provider with this mode and content hash lives.
+/// The logical legacy base location for this mode and content hash.
+/// This does not resolve generation selections; use [`current`] for discovery.
 pub fn entry(root: &Path, release: &str, mode: Mode, hash: &str) -> Entry {
     Entry {
         release: release.into(),
@@ -149,35 +154,37 @@ pub fn entry(root: &Path, release: &str, mode: Mode, hash: &str) -> Entry {
     }
 }
 
+/// Resolves the current complete generation, or a legacy directory when no
+/// selection exists. Returns `None` when neither is published. Previously returned
+/// generation paths survive later preparations, until explicit removal.
+/// Generation selection metadata is identity-checked. Legacy discovery retains
+/// its historical manifest-presence check. Use [`verify`] for full payload checks.
+///
+/// # Errors
+///
+/// Unsupported release, invalid hash, or invalid/incomplete/unreadable selection
+/// metadata, without legacy fallback
+/// when a selection file exists. The cache is trusted local state, not an
+/// authenticated or crash-durable storage service.
+pub fn current(
+    root: &Path,
+    release: &str,
+    mode: Mode,
+    hash: &str,
+) -> Result<Option<Entry>, String> {
+    let release = self::release(release)?;
+    if !hex(hash) {
+        return Err("provider content hash must be nonempty lowercase hexadecimal".into());
+    }
+    super::cache_selection::current(&entry(root, release, mode, hash))
+}
+
 /// Every prepared provider under ROOT, by release, mode and hash.
 pub fn list(root: &Path) -> Result<Vec<Entry>, String> {
     let mut entries = Vec::new();
-    let target = root.join(TARGET);
-    if !target.is_dir() {
-        return Ok(entries);
-    }
-    for &release in RELEASES {
-        let dir = release_dir(root, release);
-        let Ok(read) = fs::read_dir(&dir) else {
-            continue;
-        };
-        for item in read {
-            let item = item.map_err(|e| e.to_string())?;
-            let name = item.file_name().to_string_lossy().into_owned();
-            let Some((mode, hash)) = name.split_once('-') else {
-                continue;
-            };
-            let (Ok(mode), true) = (mode.parse::<Mode>(), hex(hash)) else {
-                continue;
-            };
-            if item.path().join("manifest.json").is_file() {
-                entries.push(Entry {
-                    release: release.into(),
-                    mode,
-                    hash: hash.into(),
-                    dir: item.path(),
-                });
-            }
+    for logical in super::cache_selection::candidates(root)? {
+        if let Some(selected) = super::cache_selection::current(&logical)? {
+            entries.push(selected);
         }
     }
     entries.sort_by(|a, b| {
@@ -428,6 +435,10 @@ pub fn verify(entry: &Entry, snapshot: &Snapshot) -> Result<Provider, String> {
 /// Copies DIR to a new TARGET, keeping symbolic links as links.
 pub fn copy_tree(dir: &Path, target: &Path) -> Result<(), String> {
     fs::create_dir(target).map_err(|e| format!("cannot create new {}: {e}", target.display()))?;
+    copy_tree_contents(dir, target)
+}
+
+fn copy_tree_contents(dir: &Path, target: &Path) -> Result<(), String> {
     for item in fs::read_dir(dir).map_err(|e| e.to_string())? {
         let item = item.map_err(|e| e.to_string())?;
         let (from, to) = (item.path(), target.join(item.file_name()));
@@ -485,7 +496,7 @@ pub fn remove_tree(dir: &Path) -> Result<(), String> {
 pub fn export(entry: &Entry, to: &Path) -> Result<PathBuf, String> {
     let target = to
         .join(format!("glibc-{}", entry.release))
-        .join(entry.dir.file_name().expect("named"));
+        .join(format!("{}-{}", entry.mode, entry.hash));
     fs::create_dir_all(target.parent().expect("has parent")).map_err(|e| e.to_string())?;
     copy_tree(&entry.dir, &target)?;
     // The descriptor's paths are this machine's; import writes new ones.
@@ -536,20 +547,16 @@ pub fn import(from: &Path, root: &Path, gcc_startup: &Path) -> Result<Vec<Entry>
                 ));
             }
             let target = entry(root, release_name, mode, hash);
-            if target.dir.exists() {
-                imported.push(target);
+            if let Some(current) = super::cache_selection::current(&target)? {
+                imported.push(current);
                 continue;
             }
-            let parent = target.dir.parent().expect("has parent");
-            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            let temporary = parent.join(format!(".tmp-import-{}-{name}", std::process::id()));
-            remove_tree(&temporary)?;
-            copy_tree(&source, &temporary)?;
+            let stage = super::prepare::Stage::new(&target)?;
+            copy_tree_contents(&source, &stage.dir)?;
             // The descriptor names the final directory.
-            let text = descriptor_text(&target.dir, release_name, gcc_startup)?;
-            fs::write(temporary.join("provider.txt"), text).map_err(|e| e.to_string())?;
-            fs::rename(&temporary, &target.dir).map_err(|e| e.to_string())?;
-            imported.push(target);
+            let text = descriptor_text(&stage.dir, release_name, gcc_startup)?;
+            fs::write(stage.dir.join("provider.txt"), text).map_err(|e| e.to_string())?;
+            imported.push(stage.publish(&target, false)?);
         }
     }
     Ok(imported)
@@ -588,6 +595,10 @@ mod tests {
         assert!("binary".parse::<Mode>().is_err());
         assert!(release("2.16").is_err());
         assert_eq!(release("2.44").unwrap(), "2.44");
+        assert!(current(root, "../outside", Mode::Source, "abcd").is_err());
+        for hash in ["", "../outside", "AABB", "a/b"] {
+            assert!(current(root, "2.28", Mode::Source, hash).is_err());
+        }
     }
 
     #[test]

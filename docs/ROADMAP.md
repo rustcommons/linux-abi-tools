@@ -172,11 +172,14 @@ from a distribution's glibc (measured for CentOS 7.9 and 2.17).
 - [ ] Test i386/x32 rejection with each supported OCI runtime and decide whether
   parity with the local filter's `ENOSYS` is needed. Native x86_64 coverage does
   not establish foreign-ABI parity; no profile/data changes are implied.
-- [ ] Design cache reader/writer coordination for forced provider replacement.
-  `prepare --force` removes the old entry before renaming the staged one, so
-  concurrent readers may see missing paths, and rename failure can leave no
-  installed entry. Avoid forced replacement while builds use that entry;
-  atomicity and cross-platform recovery need a separate design/test change.
+- [x] Implement immutable provider generations with atomic selection for forced
+  preparation; retain paths already given to readers and use exclusive staging
+  names. [Concurrency contract](USING-PROVIDERS.md#cache-concurrency), LAT-REQ-013.
+  This is unreleased: installed producer 0.5.0/cargo-libc 0.6.0 still have the
+  original replacement window. A producer minor release and downstream adoption
+  remain separate gates. Destructive removal requires quiescent readers/writers;
+  automatic generation reclamation and crash-durable/distributed storage remain
+  outside this fix.
 
 Runner signal death remains the documented status `128` when the directly
 launched process has no numeric exit code; normal engine/program numeric status

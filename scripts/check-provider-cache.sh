@@ -16,7 +16,7 @@ cat "$scratch/prepare.txt"
 test "$(wc -l < "$scratch/descriptors.txt")" -eq 28
 test "$(grep -c '^  verified every object against the container build' "$scratch/prepare.txt")" -eq 28
 for release in $releases; do
-    descriptor=$(grep -F "/glibc-$release/source-" "$scratch/descriptors.txt")
+    descriptor=$("$tool" provider path --glibc "$release" --cc "$cc" --cache "$cache")
     "$tool" provider verify --glibc "$release" --cache "$cache"
     test "$("$tool" provider path --glibc "$release" --cc "$cc" --cache "$cache")" = "$descriptor"
     dir=$(dirname "$descriptor")
@@ -45,7 +45,7 @@ imported=$("$tool" provider path --glibc 2.28 --cc "$cc" --cache "$scratch/other
 case "$imported" in "$scratch/other/"*) ;; *) echo "import kept foreign paths: $imported" >&2; exit 1 ;; esac
 
 # A changed file is found.
-header=$(ls -d "$scratch"/other/x86_64-unknown-linux-gnu/glibc-2.28/source-*)/sysroot/usr/include/stdio.h
+header=$(dirname "$imported")/sysroot/usr/include/stdio.h
 chmod u+w "$header"
 echo '/* changed */' >> "$header"
 if "$tool" provider verify --glibc 2.28 --cache "$scratch/other" 2> "$scratch/tampered.txt"; then

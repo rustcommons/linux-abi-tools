@@ -13,7 +13,19 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
-No additional changes recorded.
+### Fixed
+
+- Provider preparation now publishes immutable generations through an atomic
+  selection file. `prepare --force` no longer deletes paths already given to
+  builds, and publication failure preserves earlier generations. Concurrent
+  writers use distinct staging directories and keep only their own cleanup
+  ownership. Export/import and discovery understand the new cache layout.
+- `cache::current` resolves the selected generation; use returned descriptor paths
+  instead of constructing them. Legacy directories and descriptor v1 remain
+  supported. Old generations consume space until explicit, quiescent removal.
+  This unreleased public API/cache contract requires a producer minor release
+  and deliberate downstream adoption; published 0.5.0 and cargo-libc 0.6.0 do
+  not contain the fix. See [cache concurrency](docs/USING-PROVIDERS.md#cache-concurrency).
 
 ## [0.5.0] - 2026-11-03
 
