@@ -4,8 +4,8 @@
 
 **Published 2026-11-08 UTC** from `f409ae8e2b379e414d94809c8f4e6627d29eca20`.
 All five archives, the annotated tag, docs.rs and a fresh registry installation
-are verified below. GitHub Release publication/full published-docs verification
-remain pending at this bookkeeping candidate.
+are verified below. GitHub Release publication and full published-docs
+verification are complete; the final closeout follows the publication record.
 
 Preparation began at the maintainer's request on the same UTC date. This is
 the five-crate linux-abi-tools workspace release, not the already released
@@ -164,6 +164,28 @@ the installed executable and process evidence: 1,205 hashed files,
 7,878,287 bytes, SHA-256
 `e56ce0c4729f2347c4ec60042a202df6140561ea170a7748520a72ecc36ee398`.
 
-GitHub Release notes and full published-documentation verification are pending
-this excluded-documentation review. No crate upload or tag is repeated during
-bookkeeping. Cargo's minimum, registry lock and release remain unchanged here.
+The notes candidate initially awaited GitHub Release publication and full
+published-documentation verification; both are complete below. No crate upload
+or tag was repeated during bookkeeping. Cargo's minimum, registry lock and
+release remain unchanged here.
+
+## Final Release and documentation closeout
+
+Completed 2026-11-08 UTC. [PR16](https://github.com/rustcommons/linux-abi-tools/pull/16)
+merged normally as `cc3c55ac858c6d302b23d3206f4c934732f88177`, with exactly the
+independently approved `4392ff77f673b84cda3be0324a6130b620cbdd9b` tree. Its
+[exact-head docs CI42449194081](https://github.com/rustcommons/linux-abi-tools/actions/runs/42449194081)
+passed before merge and note publication. The reviewer separately verified all
+1,205 published-proof hashes, actual registry installation/binary identity and
+2,331 held-file cycles; no runtime test was repeated for the docs.
+
+The [live v0.6.0 Release](https://github.com/rustcommons/linux-abi-tools/releases/tag/v0.6.0)
+uses the exact committed notes, is latest and stable, and has zero assets.
+The annotated tag remains at exact release source `f409ae8e2b379e414d94809c8f4e6627d29eca20`.
+The committed note SHA-256 is `6ff0884b41f186fad3368314ce26026d550b39f00881d96384fe99952daed8c4`.
+Both the authenticated local `--published` checker and
+[full nine-version published CI42449316473](https://github.com/rustcommons/linux-abi-tools/actions/runs/42449316473)
+passed. The [release-event check42449316132](https://github.com/rustcommons/linux-abi-tools/actions/runs/42449316132)
+also passed. Exact live body/latest/assets and merge/tag identities were checked
+independently. This closes the producer release, not Cargo minimum adoption or
+new runtime/platform qualification. All limits above still apply.
