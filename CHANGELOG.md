@@ -13,7 +13,9 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
-No additional changes assigned.
+Repository security automation: pinned Actions, weekly Dependabot, zizmor and
+cargo-deny PR checks, Scorecard reporting, and owner-approved crates.io Trusted
+Publishing setup. No runtime, package version, or published archive changes.
 
 ## [0.6.0] - 2026-11-08
 
