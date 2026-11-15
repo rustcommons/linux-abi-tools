@@ -49,7 +49,8 @@ is preserved alongside the completed publication record.
 ## Trusted Publishing setup and recovery
 
 The owner-approved 2026-11-15 security baseline adds
-[`.github/workflows/publish-crates.yml`](../.github/workflows/publish-crates.yml).
+[`.github/workflows/trusted-publishing.yml`](../.github/workflows/trusted-publishing.yml).
+This exact filename is the owner's organization-wide standard for crate publishing.
 It runs only on a new `v*` tag, after the `crates-io` environment's required
 owner review. Main is PR-only and existing `v*` tags cannot be moved or deleted.
 Keep the qualification and archive audits below: this workflow does not replace
@@ -61,11 +62,11 @@ for each existing crate before approving the first automated publication:
 
 | Crate | Repository owner | Repository name | Workflow filename | Environment |
 | --- | --- | --- | --- | --- |
-| `linux-targets` | `rustcommons` | `linux-abi-tools` | `publish-crates.yml` | `crates-io` |
-| `kernel-abi-tools` | `rustcommons` | `linux-abi-tools` | `publish-crates.yml` | `crates-io` |
-| `linux-abi-scan` | `rustcommons` | `linux-abi-tools` | `publish-crates.yml` | `crates-io` |
-| `libc-abi-tools` | `rustcommons` | `linux-abi-tools` | `publish-crates.yml` | `crates-io` |
-| `linux-abi-tools` | `rustcommons` | `linux-abi-tools` | `publish-crates.yml` | `crates-io` |
+| `linux-targets` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
+| `kernel-abi-tools` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
+| `linux-abi-scan` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
+| `libc-abi-tools` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
+| `linux-abi-tools` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
 
 The job uses Rust 1.90, exchanges GitHub OIDC for a short-lived crates.io token,
 and runs `cargo publish --locked` in the order targets → kernel → scan → libc
