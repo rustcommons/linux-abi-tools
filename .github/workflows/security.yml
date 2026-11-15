@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-# Replace stale checks only within the same PR; retain non-PR qualification runs.
+# PR numbers coalesce stale checks; unique run IDs preserve every non-PR run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   zizmor:
