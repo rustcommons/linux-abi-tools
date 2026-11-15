@@ -1,6 +1,8 @@
 name: Release documentation
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   pull_request:
   release:
     types: [published, edited]
@@ -12,8 +14,13 @@ on:
         default: false
 permissions:
   contents: read
+# Replace stale checks only within the same PR; retain non-PR qualification runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   release-documentation:
+    if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

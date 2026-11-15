@@ -13,9 +13,12 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
-Repository security automation: pinned Actions, weekly Dependabot, zizmor and
+Repository security automation: pinned Actions, monthly grouped Dependabot version
+updates (security updates remain immediate), zizmor and
 cargo-deny PR checks, Scorecard reporting, and owner-approved crates.io Trusted
-Publishing setup. No runtime, package version, or published archive changes.
+Publishing setup. Dependabot PRs use core checks; full qualification remains for
+human PRs, main/release tags and manual runs, with stale PR runs canceled.
+No runtime, package version, or published archive changes.
 
 ## [0.6.0] - 2026-11-08
 
