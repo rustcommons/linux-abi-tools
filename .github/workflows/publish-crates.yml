@@ -4,6 +4,10 @@ on:
     tags: ['v*']
 permissions:
   contents: read
+# Serialize approved releases; never cancel a publication that may be partial.
+concurrency:
+  group: crates-io-publish
+  cancel-in-progress: false
 jobs:
   publish:
     runs-on: ubuntu-latest

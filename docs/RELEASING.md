@@ -83,7 +83,7 @@ Registering this workflow does not itself prove a successful OIDC publication;
 that remains unverified until the first future authorized release. No crates or
 tags are created as part of installing the security baseline.
 
-Primary references: [crates.io Trusted Publishing](https://crates.io/docs/trusted-publishing),
+Primary references: [crates.io Trusted Publishing](https://forge.rust-lang.org/infra/docs/trusted-publishing.html),
 [authentication action](https://github.com/rust-lang/crates-io-auth-action),
 and [Scorecard workflow restrictions](https://github.com/ossf/scorecard-action#workflow-restrictions).
 Scorecard publishes on main pushes and weekly with job-scoped OIDC and SARIF
