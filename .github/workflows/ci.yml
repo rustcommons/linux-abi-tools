@@ -9,8 +9,10 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@92e73e19cbfb3981e63ef478a16f95f415e634d3 # 1.99.0
         with:
           components: rustfmt, clippy
       # Download crates.io dependencies before the --offline steps.
@@ -28,8 +30,10 @@ jobs:
     name: API documentation (cargo doc, warnings denied)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@92e73e19cbfb3981e63ef478a16f95f415e634d3 # 1.99.0
       - run: cargo fetch --locked
       # Broken intra-doc links and malformed docs fail here, built as docs.rs does
       # (Linux, all features). Missing docs fail the clippy step above, since
@@ -45,8 +49,10 @@ jobs:
       matrix:
         gcc: [12, 13, 14]
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@92e73e19cbfb3981e63ef478a16f95f415e634d3 # 1.99.0
       - run: sudo apt-get update && sudo apt-get install -y gcc-${{ matrix.gcc }} binutils clang
       - run: cargo fetch --locked
       - run: cargo build --release --locked --offline --bin libc-abi
@@ -64,8 +70,10 @@ jobs:
         # One release per builder image: CentOS 7, Debian 9, Debian 12.
         glibc: ['2.17', '2.28', '2.40']
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@92e73e19cbfb3981e63ef478a16f95f415e634d3 # 1.99.0
       - run: sudo apt-get update && sudo apt-get install -y podman gcc binutils curl
       - run: cargo fetch --locked
       - run: cargo build --release --locked --offline --bin libc-abi
@@ -73,16 +81,20 @@ jobs:
   msrv:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.90.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
       - run: cargo fetch --locked
       - run: cargo check --all-targets --locked --offline
   history:
     name: ABI matrix and user reference
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@92e73e19cbfb3981e63ef478a16f95f415e634d3 # 1.99.0
       - run: cargo fetch --locked
       - run: cargo build --locked --offline
       - name: Export the glibc ABI lists from glibc-abilists
@@ -91,7 +103,7 @@ jobs:
         run: python3 scripts/build-glibc-reference.py --binary target/debug/libc-abi --check
       - name: Verify CI bundle integrity and extraction fixtures
         run: python3 examples/glibc-two-paths/test-ci-bundle.py
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: glibc-history-reference
           path: |
@@ -105,8 +117,10 @@ jobs:
       matrix:
         glibc: ['2.17', '2.18', '2.19', '2.20', '2.21', '2.22', '2.23', '2.24', '2.25', '2.26', '2.27', '2.28', '2.29', '2.30', '2.31', '2.32', '2.33', '2.34', '2.35', '2.36', '2.37', '2.38', '2.39', '2.40', '2.41', '2.42', '2.43', '2.44']
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@92e73e19cbfb3981e63ef478a16f95f415e634d3 # 1.99.0
       - run: cargo fetch --locked
       - name: Bundled and exported data agree; export is deterministic
         env:
@@ -118,7 +132,7 @@ jobs:
           target/debug/libc-abi glibc snapshot --data data/glibc --release "$GLIBC_RELEASE" > second.tsv
           test -s first.tsv
           cmp first.tsv second.tsv
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: glibc-${{ matrix.glibc }}-snapshot
           path: first.tsv

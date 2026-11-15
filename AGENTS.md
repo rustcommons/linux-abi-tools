@@ -152,6 +152,13 @@ oldest-target runtime qualification on a real kernel.
 - When backfilling history, reconstruct facts from existing tags, registry records and source/evidence. Preserve original source identities, distinguish original release dates from documentation backfill dates, and state unavailable historical validation. Never fabricate checks, move tags, republish versions, or imply that repository edits change immutable published archives.
 - For an organization profile, placeholder or project with no shipped version, record release verification as not applicable until its first authorized release. Do not invent versions, features, changelog history or GitHub Releases to satisfy this convention.
 
+## Security automation
+
+- All changes to `main` require a PR and the `lf-only` check; never push directly to `main`, force-push protected branches, or update/delete existing `v*` tags. Use normal reviewed merges.
+- Pin every external GitHub Action to its full commit SHA with the version tag in a trailing comment. Keep workflow permissions read-only; grant necessary write permissions only to the job that uses them. Disable checkout credential persistence.
+- Require the PR security jobs: zizmor (regular persona, including online audits), cargo-deny (RustSec advisories, licenses, bans, crates.io-only sources), and offline release-script controls. Fix findings or explain narrowly scoped suppressions inline. Keep weekly Dependabot groups and Scorecard reporting active.
+- The crates.io publishing workflow must be named `.github/workflows/trusted-publishing.yml` (owner standard, 2026-11-15). Crate publication through it requires an immutable reviewed `v*` tag, the owner-approved `crates-io` environment, and per-crate Trusted Publisher registration. OIDC permission belongs only to publishing and Scorecard reporting jobs, for their respective services. Preserve existing manual release recovery and all package/release qualification gates; configuring automation authorizes no new release.
+
 ## Git conventions
 
 **No tool attribution, anywhere.** Do not add `Co-Authored-By: Claude ...` trailers,

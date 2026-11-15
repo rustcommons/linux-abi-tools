@@ -46,6 +46,54 @@ then drop the `git`/`rev` keys and update `Cargo.lock`.
 The [0.3.3 preparation and qualification](REVIEW-FIXES.md#authorized-033-release-preparation-2026-11-01)
 is preserved alongside the completed publication record.
 
+## Trusted Publishing setup and recovery
+
+The owner-approved 2026-11-15 security baseline adds
+[`.github/workflows/trusted-publishing.yml`](../.github/workflows/trusted-publishing.yml).
+This exact filename is the owner's organization-wide standard for crate publishing.
+It runs only on a new `v*` tag, after the `crates-io` environment's required
+owner review. Main is PR-only and existing `v*` tags cannot be moved or deleted.
+Keep the qualification and archive audits below: this workflow does not replace
+independent review, docs.rs checks, release notes, runtime qualification, or legal
+gates. It creates no GitHub Release or binary assets.
+
+The owner must register these **exact** Trusted Publisher values on crates.io
+for each existing crate before approving the first automated publication:
+
+| Crate | Repository owner | Repository name | Workflow filename | Environment |
+| --- | --- | --- | --- | --- |
+| `linux-targets` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
+| `kernel-abi-tools` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
+| `linux-abi-scan` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
+| `libc-abi-tools` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
+| `linux-abi-tools` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
+
+The job uses Rust 1.90, exchanges GitHub OIDC for a short-lived crates.io token,
+and runs `cargo publish --locked` in the order targets → kernel → scan → libc
+tools → umbrella. It checks all workspace versions against the exact checked-out
+clean tag, refuses any already-published version before uploading, then compares
+each generated archive's SHA-256 and clean VCS identity with the public registry
+index and official downloaded archive. Index/CDN propagation waits are bounded;
+network failures, mismatches, or a partial publication stop subsequent uploads.
+
+The existing owner-controlled local publication process remains available for
+explicitly approved recovery. Do not blindly rerun a partial batch, retag, yank,
+or replace published artifacts; inspect which exact packages succeeded and use
+the existing review/evidence process. No token is stored in this repository.
+Registering this workflow does not itself prove a successful OIDC publication;
+that remains unverified until the first future authorized release. No crates or
+tags are created as part of installing the security baseline.
+
+Primary references: [crates.io Trusted Publishing](https://forge.rust-lang.org/infra/docs/trusted-publishing.html),
+[authentication action](https://github.com/rust-lang/crates-io-auth-action),
+and [Scorecard workflow restrictions](https://github.com/ossf/scorecard-action#workflow-restrictions).
+Scorecard publishes on main pushes and weekly with job-scoped OIDC and SARIF
+permissions; its first live report requires the workflow to reach main. It does
+not establish SLSA Build L3, and no SLSA badge is claimed. This repository ships
+crate archives and notes rather than standalone release binaries, so binary
+SBOM assets and reusable binary-build provenance are outside this baseline's
+applicable scope. Existing prebuilt/legal and tier-3 qualification gaps remain.
+
 ## Release record
 
 | Version | Date | Crates | Commit (tag) |

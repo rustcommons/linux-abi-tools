@@ -22,8 +22,10 @@ jobs:
     env:
       ABI_GLIBC_RELEASE: ${{ matrix.glibc }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@92e73e19cbfb3981e63ef478a16f95f415e634d3 # 1.99.0
       - name: Fetch dependencies and export the glibc ABI lists
         run: |
           cargo fetch --locked
@@ -60,7 +62,7 @@ jobs:
         run: |
           python3 examples/glibc-two-paths/ci-bundle.py pack "$RUNNER_TEMP/glibc-$ABI_GLIBC_RELEASE" "$RUNNER_TEMP/glibc-$ABI_GLIBC_RELEASE.tar.gz"
       - name: Upload prepared provider inputs
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: glibc-${{ matrix.glibc }}-prepared-inputs
           compression-level: 0
@@ -71,7 +73,7 @@ jobs:
             ${{ runner.temp }}/glibc-${{ matrix.glibc }}-container-provider.tar
       - name: Retain preparation diagnostics even after failure
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: glibc-${{ matrix.glibc }}-preparation-diagnostics
           path: |
@@ -92,22 +94,24 @@ jobs:
       ABI_GLIBC_RELEASE: ${{ matrix.glibc }}
       ABI_BEHAVIOR_CC: /usr/bin/clang-${{ matrix.clang }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           path: libc-abi-tools
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           repository: rustcommons/cargo-libc
           path: cargo-libc
           ref: ${{ inputs.companion_ref || 'ce9a7d51122f143091050d9e53b1222b77e67de1' }}
-      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: dtolnay/rust-toolchain@92e73e19cbfb3981e63ef478a16f95f415e634d3 # 1.99.0
       - name: Install application tools
         env:
           CLANG_MAJOR: ${{ matrix.clang }}
         run: |
           bash libc-abi-tools/.github/install-clang.sh "$CLANG_MAJOR"
           sudo apt-get install -y python3 gcc binutils
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: glibc-${{ matrix.glibc }}-prepared-inputs
           path: ${{ runner.temp }}/prepared-inputs
@@ -141,7 +145,7 @@ jobs:
           bash examples/glibc-two-paths/provider-and-check.sh "$RUNNER_TEMP/glibc-$ABI_GLIBC_RELEASE" "$GITHUB_WORKSPACE/cargo-libc" "$ABI_BEHAVIOR_CC"
       - name: Retain application diagnostics even after failure
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: glibc-${{ matrix.glibc }}-clang-${{ matrix.clang }}-application-diagnostics
           path: |

@@ -1,3 +1,9 @@
+[![CI](https://github.com/rustcommons/linux-abi-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/rustcommons/linux-abi-tools/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rustcommons/linux-abi-tools/badge)](https://scorecard.dev/viewer/?uri=github.com/rustcommons/linux-abi-tools)
+[![crates.io](https://img.shields.io/crates/v/libc-abi-tools.svg)](https://crates.io/crates/libc-abi-tools)
+[![docs.rs](https://docs.rs/libc-abi-tools/badge.svg)](https://docs.rs/libc-abi-tools)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/rustcommons/linux-abi-tools/blob/main/LICENSE)
+
 ![linux-abi-tools: release-to-ABI diagram](https://raw.githubusercontent.com/rustcommons/linux-abi-tools/main/docs/assets/banner.svg)
 
 # linux-abi-tools

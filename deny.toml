@@ -1,0 +1,28 @@
+[graph]
+all-features = true
+
+[advisories]
+db-urls = ["https://github.com/RustSec/advisory-db"]
+# Unmaintained advisories warn (all graph scopes), so maintainers can assess
+# replacements without silently dropping upstream data. Vulnerabilities and
+# yanked versions are denied; no advisory IDs are ignored.
+unmaintained = "all"
+yanked = "deny"
+
+[licenses]
+allow = ["MIT"]
+# These source/data crates intentionally carry upstream glibc/Linux licenses.
+# Keep exceptions package-scoped; this is not binary distribution clearance.
+exceptions = [
+    { crate = "glibc-abilists", allow = ["LGPL-2.1-or-later"] },
+    { crate = "glibc-provider-sources", allow = ["LGPL-2.1-or-later", "GPL-2.0-only WITH Linux-syscall-note", "GPL-2.0-or-later WITH Linux-syscall-note", "LGPL-2.1-only WITH Linux-syscall-note", "LGPL-2.1-or-later WITH Linux-syscall-note", "BSD-3-Clause"] },
+]
+
+[bans]
+multiple-versions = "warn"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
