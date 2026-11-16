@@ -4,6 +4,8 @@ name: kernel-abi-tools
 on:
   workflow_dispatch:
   push:
+    branches: [main]
+    tags: ['v*']
     paths:
       - src/**
       - tests/**
@@ -21,12 +23,17 @@ on:
       - .github/workflows/kernel-abi-tools*.yml
 permissions:
   contents: read
+# PR numbers coalesce stale checks; unique run IDs preserve every non-PR run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   CRATES: --workspace
   CARGO_BUILD_JOBS: 2
   RUST_TEST_THREADS: 2
 jobs:
   rust:
+    if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]')
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -55,6 +62,7 @@ jobs:
           cargo run -p kernel-abi-tools --release --locked --offline --bin kernel-seccomp -- generate profiles
           git diff --exit-code -- profiles
   kernel-simulation:
+    if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]')
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -91,6 +99,7 @@ jobs:
           $(cd profiles/kernel && ls | sed 's/^linux-//; s/\.json$//' | sort -V)
           sles-12-sp5 rhel-7 ubuntu-24.04
   msrv:
+    if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

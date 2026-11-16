@@ -1,6 +1,8 @@
 name: glibc provider integration
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
     inputs:
@@ -10,8 +12,13 @@ on:
         default: ce9a7d51122f143091050d9e53b1222b77e67de1
 permissions:
   contents: read
+# PR numbers coalesce stale checks; unique run IDs preserve every non-PR run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   prepare:
+    if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]')
     name: Prepare and audit glibc ${{ matrix.glibc }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -81,6 +88,7 @@ jobs:
             ${{ runner.temp }}/glibc-${{ matrix.glibc }}/elf-metadata
             ${{ runner.temp }}/glibc-${{ matrix.glibc }}/link-matrix
   application:
+    if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]')
     name: Rust 1.99 and Clang ${{ matrix.clang }} / glibc ${{ matrix.glibc }}
     needs: prepare
     runs-on: ubuntu-24.04
