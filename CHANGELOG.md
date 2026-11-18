@@ -13,6 +13,12 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+Parser fuzzing: an unpublished cargo-fuzz workspace and ClusterFuzzLite PR/weekly
+campaigns cover ABI/snapshot, metadata, provider, kernel and ELF decoders. Test
+ELF files are now built from reviewed assembly instead of committed binaries.
+Action, image and tool installs are pinned; CodeQL remains enabled through commit/merge
+policy. Future crate uploads use only owner-approved Trusted Publishing.
+
 Repository security automation: pinned Actions, monthly grouped Dependabot version
 updates (security updates remain immediate), zizmor and
 cargo-deny PR checks, Scorecard reporting, and owner-approved crates.io Trusted

@@ -1,0 +1,2 @@
+symbol	version	default	type	size	alignment
+_Unwind_Resume	GCC_3.0	yes	FUNC	0	-

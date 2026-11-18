@@ -120,6 +120,8 @@ every workflow and its cargo-libc mapping; keep it in step with changes.
 
 ## Validation
 
+Before all-target tests/checks, run `python3 scripts/build-test-fixtures.py` (or verify the matching source-built CI artifact with `--verify-only`); see [fixture prerequisites](docs/SECURITY-BASELINE.md#retired-committed-binary-inventory).
+
 Run `cargo fmt --all -- --check`, `cargo test --locked --offline`, and
 `cargo clippy --all-targets --locked --offline -- -D warnings` for Rust changes;
 add `--workspace` (or `-p kernel-abi-tools -p linux-targets`) when the other
@@ -154,11 +156,14 @@ oldest-target runtime qualification on a real kernel.
 
 ## Security automation
 
+- Never use `[skip ci]`, `[ci skip]` or equivalent CI-skip directives in commit or merge messages. Keep CodeQL default setup enabled as managed by the coordinator; preserve historical commits without rewriting their messages.
+- Follow [docs/SECURITY-BASELINE.md](docs/SECURITY-BASELINE.md): pin install inputs (Action SHAs, exact locked Cargo tool versions, hashed pip requirements, verified download hashes and container digests). Maintain source-built test fixtures and the unpublished fuzz-only workspace separately from shipped crate dependencies. Run parser fuzzing on relevant human PRs and weekly; treat crashes as bugs requiring regression coverage or an owner decision.
+
 - All changes to `main` require a PR and the `lf-only` check; never push directly to `main`, force-push protected branches, or update/delete existing `v*` tags. Use normal reviewed merges.
 - Pin every external GitHub Action to its full commit SHA with the version tag in a trailing comment. Keep workflow permissions read-only; grant necessary write permissions only to the job that uses them. Disable checkout credential persistence.
 - Require the PR security jobs: zizmor (regular persona, including online audits), cargo-deny (RustSec advisories, licenses, bans, crates.io-only sources), and offline release-script controls. Fix findings or explain narrowly scoped suppressions inline. Keep Dependabot version updates monthly with a limit of two open PRs per ecosystem, retaining minor/patch groups and the seven-day cooldown; security updates remain immediate and independent of this schedule. Keep weekly Scorecard reporting active.
 - Dependabot PRs run core workspace fmt/clippy/tests, cargo-deny, zizmor, release-script unit tests, LF and GitHub-managed CodeQL. Gate provider/ABI/container/kernel qualification and non-core jobs by both actor and PR author, so a human rerun does not accidentally expand a bot PR. Human PRs, main pushes, `v*` tags and owner manual dispatch retain full qualification. Restrict push triggers to main/release tags to avoid feature-branch duplicates; every repository-defined PR workflow cancels superseded runs for the same PR, without canceling non-PR qualification or crate publication.
-- The crates.io publishing workflow must be named `.github/workflows/trusted-publishing.yml` (owner standard, 2026-11-15). Crate publication through it requires an immutable reviewed `v*` tag, the owner-approved `crates-io` environment, and per-crate Trusted Publisher registration. OIDC permission belongs only to publishing and Scorecard reporting jobs, for their respective services. Preserve existing manual release recovery and all package/release qualification gates; configuring automation authorizes no new release.
+- The crates.io publishing workflow must be named `.github/workflows/trusted-publishing.yml` (owner standard, 2026-11-15). Crate publication through it requires an immutable reviewed `v*` tag, the owner-approved `crates-io` environment, and per-crate Trusted Publisher registration. OIDC permission belongs only to publishing and Scorecard reporting jobs, for their respective services. Future crate uploads, including recovery, use only this workflow with owner environment approval; the owner-machine crates.io token was revoked on 2026-11-16. Preserve all package/release qualification gates; configuring automation authorizes no new release.
 
 ## Git conventions
 

@@ -48,6 +48,7 @@ glibc-provider-sources = { version = "0.1.0", optional = true }
 # The root package stays libc-abi-tools; `cargo` commands run in the root act
 # on it alone unless given `--workspace` or `-p`.
 [workspace]
+exclude = ["fuzz"]
 members = [
     "crates/kernel-abi-tools",
     "crates/linux-abi-scan",

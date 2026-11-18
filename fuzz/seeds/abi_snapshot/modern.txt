@@ -1,0 +1,3 @@
+GLIBC_2.2.5 printf F
+GLIBC_2.17 object D 0x8
+GLIBC_2.17 tls T 4

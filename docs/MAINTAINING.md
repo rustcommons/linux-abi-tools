@@ -186,3 +186,12 @@ cargo run -p kernel-abi-tools --release --locked --bin kernel-seccomp -- generat
 The final command builds the generator before using it; `cargo test` alone does
 not produce a release binary. Follow with the required local/container probes and
 review the profile/data diffs before committing.
+
+## Parser fuzzing and test fixtures
+
+Before tests or all-target checks, build the ELF fixtures from their reviewed
+assembly with `python3 scripts/build-test-fixtures.py`. CI builds them once and
+verifies/transfers them to Windows jobs. See the [security guide](SECURITY-BASELINE.md)
+for GNU cross-binutils prerequisites, artifact verification, the fuzz-only
+workspace, pinned local commands, and crash handling. This is a maintainer test
+prerequisite, not a dependency for installing/using a published crate.
