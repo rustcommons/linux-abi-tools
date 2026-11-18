@@ -8,9 +8,6 @@ python3 scripts/build-test-fixtures.py
 python3 scripts/seed-fuzz-corpus.py
 cargo fetch --locked --manifest-path fuzz/Cargo.toml
 before=$(sha256sum fuzz/Cargo.lock)
-# Use the builder's matching libFuzzer engine/C++ runtime, not a host archive.
-export CUSTOM_LIBFUZZER_PATH="$LIB_FUZZING_ENGINE"
-export CUSTOM_LIBFUZZER_STD_CXX=c++
 CARGO_NET_OFFLINE=true cargo fuzz build -O --debug-assertions --target x86_64-unknown-linux-gnu
 [ "$before" = "$(sha256sum fuzz/Cargo.lock)" ]
 python3 - "$OUT" <<'PY'
