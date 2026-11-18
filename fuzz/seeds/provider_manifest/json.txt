@@ -1,0 +1,1 @@
+{"format":"example","symbols":[{"name":"foo","size":8}],"present":true,"missing":null}

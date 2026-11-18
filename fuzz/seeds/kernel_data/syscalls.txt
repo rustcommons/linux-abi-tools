@@ -1,0 +1,3 @@
+# From the embedded syscall/madvise table schema
+0	read	3.3
+318	getrandom	3.17

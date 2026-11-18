@@ -1,0 +1,23 @@
+name: Source-built ELF test fixtures
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y binutils
+      - run: python3 scripts/build-test-fixtures.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: elf-test-fixtures-${{ github.run_id }}
+          if-no-files-found: error
+          path: |
+            tests/fixtures/elf/symbols.so
+            tests/fixtures/clock-profile/c.so
+            tests/fixtures/clock-profile/rt.so
+            tests/fixtures/generated-manifest.json

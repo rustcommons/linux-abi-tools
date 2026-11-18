@@ -32,7 +32,11 @@ env:
   CARGO_BUILD_JOBS: 2
   RUST_TEST_THREADS: 2
 jobs:
+  fixtures: # zizmor: ignore[self-repository] -- Supported caller-commit path; compatible with pinned actionlint and Scorecard.
+    if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]')
+    uses: ./.github/workflows/test-fixtures.yml
   rust:
+    needs: fixtures
     if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]')
     strategy:
       matrix:
@@ -45,6 +49,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@92e73e19cbfb3981e63ef478a16f95f415e634d3 # 1.99.0
         with:
           components: rustfmt, clippy
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: elf-test-fixtures-${{ github.run_id }}
+          path: tests/fixtures
+      - run: python3 scripts/build-test-fixtures.py --verify-only
       - run: cargo fetch --locked
       - run: cargo fmt --all -- --check
       - shell: bash
@@ -95,10 +104,11 @@ jobs:
           KERNEL_ABI_ENGINE_ARGS: --runtime ${{ runner.temp }}/crun
         run: >-
           bash scripts/self-test.sh "$PROBE"
-          registry.suse.com/suse/sles12sp5:latest
+          registry.suse.com/suse/sles12sp5@sha256:51280921c24d1aeb6fe2d396e92d43912ba5b03c006407de20ef21592425c21a
           $(cd profiles/kernel && ls | sed 's/^linux-//; s/\.json$//' | sort -V)
           sles-12-sp5 rhel-7 ubuntu-24.04
   msrv:
+    needs: fixtures
     if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]')
     runs-on: ubuntu-latest
     steps:
@@ -106,6 +116,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: elf-test-fixtures-${{ github.run_id }}
+          path: tests/fixtures
+      - run: python3 scripts/build-test-fixtures.py --verify-only
       - run: cargo fetch --locked
       - run: cargo check --workspace --all-targets --locked --offline
       - name: Accept official Rust 1.90 Cargo and compiler ELF files

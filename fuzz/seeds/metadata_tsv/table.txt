@@ -1,0 +1,2 @@
+soname	symbol	version	default	type	binding	visibility	section	section_alignment	value	size	same_range
+libfixture.so.1	foo	GLIBC_2.14	yes	FUNC	GLOBAL	DEFAULT	1	16	0x1000	8	-
