@@ -12,6 +12,10 @@ updates:
         update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
+    # These SHA-pinned refs select compiler versions. Review them manually so
+    # action updates cannot silently replace the MSRV/publishing toolchain.
+    ignore:
+      - dependency-name: dtolnay/rust-toolchain
     schedule:
       interval: monthly
     cooldown:
