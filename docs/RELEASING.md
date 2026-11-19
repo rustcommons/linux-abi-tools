@@ -5,6 +5,10 @@ for current official checksums, exact source, fresh registry installation and
 documentation verification, and the [user notes](releases/v0.6.0.md).
 Cargo adoption remains a separate consumer gate.
 
+Patch **0.6.1** (kernel table decoder fix) is prepared for publication through
+Trusted Publishing; see its [notes](releases/v0.6.1.md). Its release record
+follows verified publication.
+
 See the [published 0.5.0 record](#published-050-archives-and-documentation)
 for historical official checksums, source identity and documentation status.
 The [0.5.0 preparation](#050-hash-api-release-preparation-2026-11-03) and
