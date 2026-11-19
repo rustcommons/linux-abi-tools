@@ -13,12 +13,32 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-19
+
+Patch release of all five crates. Planned crates.io publication date (UTC);
+the release record corrects it if publication slips. [Notes](docs/releases/v0.6.1.md).
+
+### Fixed
+
+- kernel-abi-tools: the private syscall/madvise table decoder now rejects a
+  malformed row (wrong column count, out-of-range number, invalid kernel
+  version) with an error instead of panicking. Found while adding fuzz targets. The
+  bundled tables are valid, so `syscalls()`, `madvise_advice()` and generated
+  profiles return exactly the same results as 0.6.0.
+
+### Repository
+
+Parser fuzzing: an unpublished cargo-fuzz workspace and ClusterFuzzLite PR/weekly
+campaigns cover ABI/snapshot, metadata, provider, kernel and ELF decoders. Test
+ELF files are now built from reviewed assembly instead of committed binaries.
+Action, image and tool installs are pinned; CodeQL remains enabled through commit/merge
+policy. Future crate uploads use only owner-approved Trusted Publishing.
+
 Repository security automation: pinned Actions, monthly grouped Dependabot version
 updates (security updates remain immediate), zizmor and
 cargo-deny PR checks, Scorecard reporting, and owner-approved crates.io Trusted
 Publishing setup. Dependabot PRs use core checks; full qualification remains for
 human PRs, main/release tags and manual runs, with stale PR runs canceled.
-No runtime, package version, or published archive changes.
 
 ## [0.6.0] - 2026-11-08
 

@@ -1,0 +1,7 @@
+libc-abi-provider-v1
+target	x86_64-unknown-linux-gnu
+glibc	2.17
+sysroot	/provider/sysroot
+stubs	/provider/stubs
+gcc-startup	/provider/gcc
+compiler-runtime	/provider/runtime

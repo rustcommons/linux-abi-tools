@@ -5,6 +5,10 @@ for current official checksums, exact source, fresh registry installation and
 documentation verification, and the [user notes](releases/v0.6.0.md).
 Cargo adoption remains a separate consumer gate.
 
+Patch **0.6.1** (kernel table decoder fix) is prepared for publication through
+Trusted Publishing; see its [notes](releases/v0.6.1.md). Its release record
+follows verified publication.
+
 See the [published 0.5.0 record](#published-050-archives-and-documentation)
 for historical official checksums, source identity and documentation status.
 The [0.5.0 preparation](#050-hash-api-release-preparation-2026-11-03) and
@@ -13,6 +17,10 @@ The [0.3.3 release record](REVIEW-FIXES.md#published-033-archives-and-documentat
 remains historical.
 The [0.3.2 qualification record](RELEASE-CANDIDATE-0.3.2.md) remains historical. The
 [2026-10-31 plan](RELEASE-PLAN.md) retains the dependency analysis and release gates.
+
+Never put CI-skip directives in commit or merge messages: CodeQL and required CI
+must run. Follow the [security tooling guide](SECURITY-BASELINE.md) for pinned
+installs and parser fuzzing; historical skipped-CI evidence remains historical.
 
 The workspace publishes five crates to **crates.io only**, after
 [glibc-abilists](https://github.com/rustcommons/glibc-abilists), which holds the
@@ -76,10 +84,13 @@ each generated archive's SHA-256 and clean VCS identity with the public registry
 index and official downloaded archive. Index/CDN propagation waits are bounded;
 network failures, mismatches, or a partial publication stop subsequent uploads.
 
-The existing owner-controlled local publication process remains available for
-explicitly approved recovery. Do not blindly rerun a partial batch, retag, yank,
-or replace published artifacts; inspect which exact packages succeeded and use
-the existing review/evidence process. No token is stored in this repository.
+The owner revoked the owner-machine crates.io token on 2026-11-16. Future uploads
+use only this Trusted Publishing workflow with owner approval of `crates-io`;
+there is no owner-machine upload or local-token recovery route. The current
+workflow refuses an existing/partially published batch. Stop and present exact
+archive/index evidence for owner-reviewed recovery through Trusted Publishing;
+do not assume that partial recovery is already implemented. Never retag or
+replace published artifacts. No token is stored in this repository.
 Registering this workflow does not itself prove a successful OIDC publication;
 that remains unverified until the first future authorized release. No crates or
 tags are created as part of installing the security baseline.
@@ -296,13 +307,14 @@ Routine merges now use the registered documentation CI gate above.
    all five archives/allowlists/licenses and VCS identity, and validate on the
    exact approved source. Existing published versions are immutable; skip crate
    publishing entirely when backfilling documentation.
-4. With required gates and explicit approval, publish new packages in dependency
-   order: `linux-targets` → `kernel-abi-tools` → `linux-abi-scan` → `libc-abi-tools`
+4. With required gates and explicit approval, create the new immutable source tag
+   on the exact approved release commit, then approve `crates-io` for the Trusted
+   Publishing workflow. It publishes in dependency order: `linux-targets` → `kernel-abi-tools` → `linux-abi-scan` → `libc-abi-tools`
    → `linux-abi-tools`. Upstream glibc data/source crates must already be available
-   at the required versions. Only the authorized publisher performs this step.
-5. Create a new source tag only for an authorized new version, on its exact
-   approved release commit. For existing-tag documentation, verify the existing
-   tag/commit and preserve it; never recreate, move or force-push a tag.
+   at the required versions. Do not publish from an owner-machine token.
+5. For existing-tag documentation, verify the existing tag/commit and preserve
+   it; never recreate, move or force-push a tag. Dated records of the former
+   local publication process remain historical, not a current release route.
 6. Verify official registry archives, checksums, non-yanked state, clean VCS and
    all five versioned docs.rs builds/pages. Preserve source/package evidence
    separately from later documentation commits and consumer adoption.

@@ -1,0 +1,75 @@
+[package]
+name = "linux-abi-tools-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+license = "MIT"
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "=0.4.13"
+libc-abi-tools = { path = "..", default-features = false }
+kernel-abi-tools = { path = "../crates/kernel-abi-tools" }
+linux-targets = { path = "../crates/linux-targets" }
+linux-abi-scan = { path = "../crates/linux-abi-scan" }
+
+[[bin]]
+name = "abi_snapshot"
+path = "fuzz_targets/abi_snapshot.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "metadata_tsv"
+path = "fuzz_targets/metadata_tsv.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "provider_manifest"
+path = "fuzz_targets/provider_manifest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "kernel_data"
+path = "fuzz_targets/kernel_data.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "elf_scan"
+path = "fuzz_targets/elf_scan.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "target_selection"
+path = "fuzz_targets/target_selection.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "clock_profile"
+path = "fuzz_targets/clock_profile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "recorded_libgcc"
+path = "fuzz_targets/recorded_libgcc.rs"
+test = false
+doc = false
+bench = false

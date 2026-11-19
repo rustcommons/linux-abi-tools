@@ -12,7 +12,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  fixtures: # zizmor: ignore[self-repository] -- Supported caller-commit path; compatible with pinned actionlint and Scorecard.
+    uses: ./.github/workflows/test-fixtures.yml
   rust:
+    needs: fixtures
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -25,6 +28,11 @@ jobs:
         with:
           components: rustfmt, clippy
       # Download crates.io dependencies before the --offline steps.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: elf-test-fixtures-${{ github.run_id }}
+          path: tests/fixtures
+      - run: python3 scripts/build-test-fixtures.py --verify-only
       - run: cargo fetch --locked
       - run: cargo fmt --all -- --check
       - run: cargo test --workspace --all-targets --locked --offline
@@ -91,6 +99,7 @@ jobs:
       - run: cargo build --release --locked --offline --bin libc-abi
       - run: bash scripts/check-container-provider.sh target/release/libc-abi ${{ matrix.glibc }}
   msrv:
+    needs: fixtures
     if: github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]')
     runs-on: ubuntu-latest
     steps:
@@ -98,6 +107,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: elf-test-fixtures-${{ github.run_id }}
+          path: tests/fixtures
+      - run: python3 scripts/build-test-fixtures.py --verify-only
       - run: cargo fetch --locked
       - run: cargo check --all-targets --locked --offline
   history:

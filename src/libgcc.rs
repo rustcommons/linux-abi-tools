@@ -39,7 +39,7 @@ pub fn definitions() -> Result<Vec<Definition>, String> {
     parse(INTERFACE)
 }
 
-fn parse(text: &str) -> Result<Vec<Definition>, String> {
+pub(crate) fn parse(text: &str) -> Result<Vec<Definition>, String> {
     let mut lines = text.lines().filter(|l| !l.starts_with('#'));
     if lines.next() != Some(HEADER) {
         return Err("libgcc_s interface: unexpected header".into());

@@ -1,0 +1,5 @@
+object	kind	value
+crt1.o	defined	_start
+crt1.o	undefined	__libc_start_main
+crt1.o	section	.text
+crt1.o	reference	.text call __libc_start_main

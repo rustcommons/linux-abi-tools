@@ -34,6 +34,7 @@
 #![warn(missing_docs)]
 
 pub mod container;
+mod data;
 pub mod filter;
 pub mod local;
 
@@ -122,16 +123,13 @@ pub struct Syscall {
 
 /// All x86_64 (64-bit ABI) syscalls, ordered by number.
 pub fn syscalls() -> Vec<Syscall> {
-    data_rows(SYSCALL_DATA)
-        .map(|cols| {
-            let [nr, name, first] = cols[..] else {
-                panic!("syscall data row needs 3 columns: {cols:?}");
-            };
-            Syscall {
-                nr: nr.parse().expect("syscall number"),
-                name,
-                first: KernelVersion::parse(first).expect("syscall first_release"),
-            }
+    data::parse(SYSCALL_DATA)
+        .expect("invalid embedded syscall table")
+        .into_iter()
+        .map(|row| Syscall {
+            nr: row.number,
+            name: row.name,
+            first: row.first,
         })
         .collect()
 }
@@ -217,16 +215,13 @@ pub struct MadviseAdvice {
 
 /// All `madvise` advice values known to the data, ordered by value.
 pub fn madvise_advice() -> Vec<MadviseAdvice> {
-    data_rows(MADVISE_DATA)
-        .map(|cols| {
-            let [value, name, first] = cols[..] else {
-                panic!("madvise data row needs 3 columns: {cols:?}");
-            };
-            MadviseAdvice {
-                value: value.parse().expect("madvise value"),
-                name,
-                first: KernelVersion::parse(first).expect("madvise first_release"),
-            }
+    data::parse(MADVISE_DATA)
+        .expect("invalid embedded madvise table")
+        .into_iter()
+        .map(|row| MadviseAdvice {
+            value: row.number,
+            name: row.name,
+            first: row.first,
         })
         .collect()
 }
@@ -310,12 +305,6 @@ fn madvise_entry(op: &str, value: u64, value_two: Option<u64>, allow: bool) -> S
         "    {{ \"names\": [\"madvise\"], {action}, \
          \"args\": [{{ \"index\": 2, \"value\": {value}{two}, \"op\": \"{op}\" }}] }}"
     )
-}
-
-fn data_rows(data: &'static str) -> impl Iterator<Item = Vec<&'static str>> {
-    data.lines()
-        .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
-        .map(|l| l.split('\t').map(str::trim).collect())
 }
 
 fn json_str(s: &str) -> String {

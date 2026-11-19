@@ -4,7 +4,7 @@
 set -euo pipefail
 runner=$(realpath "${1:?kernel-seccomp binary required}")
 crun=$(realpath "${2:?crun binary required}")
-image=registry.suse.com/suse/sles12sp5:latest
+image=registry.suse.com/suse/sles12sp5@sha256:51280921c24d1aeb6fe2d396e92d43912ba5b03c006407de20ef21592425c21a
 export CARGO_KERNEL_ABI_IO_TEST='cargo value with spaces'
 export RUST_KERNEL_ABI_IO_TEST='rust value with spaces'
 export UNRELATED_KERNEL_ABI_IO_TEST='must not be forwarded'
