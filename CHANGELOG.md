@@ -15,8 +15,8 @@ no tag was moved and no crate was republished.
 
 ## [0.6.1] - 2026-11-19
 
-Patch release of all five crates. Planned crates.io publication date (UTC);
-the release record corrects it if publication slips. [Notes](docs/releases/v0.6.1.md).
+Patch release of all five crates, published to crates.io on this UTC date.
+[Notes](docs/releases/v0.6.1.md) and [release record](docs/RELEASE-0.6.1.md).
 
 ### Fixed
 

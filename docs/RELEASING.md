@@ -1,13 +1,10 @@
 # Releasing
 
-Producer **0.6.0 is published**. See the [release record](RELEASE-0.6.0.md)
-for current official checksums, exact source, fresh registry installation and
-documentation verification, and the [user notes](releases/v0.6.0.md).
+Producer **0.6.1 is published**, the first release through Trusted Publishing only.
+See the [release record](RELEASE-0.6.1.md) for official checksums, exact source,
+publisher provenance, docs.rs and fresh registry build, and the
+[user notes](releases/v0.6.1.md). The [0.6.0 record](RELEASE-0.6.0.md) is historical.
 Cargo adoption remains a separate consumer gate.
-
-Patch **0.6.1** (kernel table decoder fix) is prepared for publication through
-Trusted Publishing; see its [notes](releases/v0.6.1.md). Its release record
-follows verified publication.
 
 See the [published 0.5.0 record](#published-050-archives-and-documentation)
 for historical official checksums, source identity and documentation status.
