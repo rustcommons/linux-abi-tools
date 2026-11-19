@@ -55,7 +55,7 @@ dependencies = [
 
 [[package]]
 name = "kernel-abi-tools"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "linux-targets",
 ]
@@ -68,7 +68,7 @@ checksum = "65cd87c9a6d60536580b316ad985726104730a5151c99845f2490428ef91240a"
 
 [[package]]
 name = "libc-abi-tools"
-version = "0.6.0"
+version = "0.6.1"
 
 [[package]]
 name = "libfuzzer-sys"
@@ -82,7 +82,7 @@ dependencies = [
 
 [[package]]
 name = "linux-abi-scan"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "kernel-abi-tools",
  "linux-targets",
@@ -101,7 +101,7 @@ dependencies = [
 
 [[package]]
 name = "linux-targets"
-version = "0.6.0"
+version = "0.6.1"
 
 [[package]]
 name = "r-efi"
