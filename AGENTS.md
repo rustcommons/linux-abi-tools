@@ -182,13 +182,15 @@ crates.io, the owner's approval), `github-release` (GitHub release) and `verify`
 inputs and manual runs are dry runs of `gate` and `build` only. The gate
 ([scripts/release-gate.py](scripts/release-gate.py)) requires an annotated tag on
 a commit reachable from `main` with green CI, the dated changelog entry and
-`docs/releases/vX.Y.Z.md`. Publishing covers all five crates in dependency order,
+`docs/releases/vX.Y.Z.md`. The release set is every workspace crate whose version
+equals the tag; every other workspace crate must already be on crates.io at its
+declared version. The release set is published in dependency order,
 skips versions already on crates.io, and publishes only bytes identical (`cmp`)
 to the attested archive. The workflow creates the GitHub Release from the committed
 notes; maintainers no longer create it by hand.
 
 On 2026-11-21 the owner authorized attaching exactly these files to each GitHub
-Release, and nothing else: the five `.crate` files, their CycloneDX SBOMs
+Release, and nothing else: the released `.crate` files, their CycloneDX SBOMs
 (`*.cdx.json`), `SHA256SUMS`, and the provenance bundle
 `linux-abi-tools-X.Y.Z.crates.intoto.jsonl`.
 

@@ -36,7 +36,7 @@ supported by the pinned actionlint and Scorecard parsers.
 - Pull requests that change the release workflow, release scripts, changelog,
   release notes or crate manifests/lock dry-run
   [trusted-publishing.yml](../.github/workflows/trusted-publishing.yml): its
-  `gate` and `build` jobs package all five crates with Rust 1.90, check each
+  `gate` and `build` jobs package the release set with Rust 1.90, check each
   archive's clean VCS identity and produce SBOMs and `SHA256SUMS`, without the
   `crates-io` environment, a token or an upload.
 

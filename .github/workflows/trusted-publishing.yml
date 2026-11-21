@@ -16,7 +16,7 @@ on:
       - 'scripts/test-verify-published-crates.py'
       - 'CHANGELOG.md'
       - 'docs/releases/**'
-      # Lockstep version bumps of the five crates.
+      # Version bumps of any workspace crate.
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'crates/*/Cargo.toml'
@@ -83,8 +83,10 @@ jobs:
           mkdir -p "$dist"
           echo "DIST=$dist" >> "$GITHUB_ENV"
           cargo fetch --locked
-          # Package the release crates together, in dependency order, so each is
-          # verified against its unpublished sibling versions. This also builds
+          # The release set is every crate whose version equals the release
+          # version (crate versions are independent). Package it together, in
+          # dependency order, so each crate is verified against unpublished
+          # siblings in the set; others resolve from crates.io. This also builds
           # every crate from its packaged source.
           args=()
           for crate in $(jq -r '.[]' <<<"$CRATES"); do args+=(-p "$crate"); done
@@ -315,16 +317,24 @@ jobs:
             echo "::warning::docs.rs builds still pending after the bounded wait, not a pass: ${pending[*]}"
             echo "docs.rs: PENDING for ${pending[*]}" >> "$GITHUB_STEP_SUMMARY"
           fi
-      - name: Clean locked installs of the crates that ship executables
+      - name: Clean locked installs of the released crates that ship executables
         run: |
           set -euo pipefail
           export CARGO_HOME="$RUNNER_TEMP/published-cargo-home"
           root="$RUNNER_TEMP/published-install"
-          cargo install libc-abi-tools --version "$VERSION" --locked --root "$root"
-          cargo install kernel-abi-tools --version "$VERSION" --locked --root "$root"
-          cargo install linux-abi-scan --version "$VERSION" --locked --root "$root"
-          test "$("$root/bin/libc-abi" --version)" = "libc-abi $VERSION"
-          test "$("$root/bin/kernel-seccomp" --version | head -n1)" = "kernel-seccomp $VERSION"
-          # linux-abi-scan has no version flag; its help must still run.
-          "$root/bin/linux-abi-scan" --help > /dev/null
-          test -x "$root/bin/syscall-probe"
+          # Crate versions are independent: check only crates in this release set.
+          for crate in $(jq -r '.[]' <<<"$CRATES"); do
+            case "$crate" in
+              libc-abi-tools|kernel-abi-tools|linux-abi-scan)
+                cargo install "$crate" --version "$VERSION" --locked --root "$root" ;;
+              *) continue ;;
+            esac
+            case "$crate" in
+              libc-abi-tools) test "$("$root/bin/libc-abi" --version)" = "libc-abi $VERSION" ;;
+              kernel-abi-tools)
+                test "$("$root/bin/kernel-seccomp" --version | head -n1)" = "kernel-seccomp $VERSION"
+                test -x "$root/bin/syscall-probe" ;;
+              # linux-abi-scan has no version flag; its help must still run.
+              linux-abi-scan) "$root/bin/linux-abi-scan" --help > /dev/null ;;
+            esac
+          done

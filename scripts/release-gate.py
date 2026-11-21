@@ -67,15 +67,22 @@ def dependency_order(packages):
     return ordered
 
 
+def version_key(version: str):
+    core = version.split('-', 1)[0].split('+', 1)[0]
+    return tuple(int(part) for part in core.split('.'))
+
+
 def checks(root: Path, args) -> tuple[str, list[str], list[str]]:
     """Return (version, crates, failures)."""
     failures: list[str] = []
     packages = [p for p in workspace(root) if publishable(p)]
     if not packages:
         raise ValueError('no publishable workspace crate')
-    root_manifest = (root / 'Cargo.toml').resolve()
-    root_pkg = next((p for p in packages if Path(p['manifest_path']).resolve() == root_manifest), None)
-    version = args.ref_name[1:] if args.event == 'push' else (root_pkg or packages[0])['version']
+    # Workspace crates have independent versions. A tag releases every crate whose
+    # version equals it; a dry run previews the highest declared version, so a PR
+    # that bumps only some crates packages exactly those.
+    version = args.ref_name[1:] if args.event == 'push' else max(
+        (p['version'] for p in packages), key=version_key)
 
     release = [p for p in packages if p['version'] == version]
     if not release:
@@ -106,8 +113,6 @@ def checks(root: Path, args) -> tuple[str, list[str], list[str]]:
         tag = args.ref_name
         if not re.fullmatch(r'v\d+\.\d+\.\d+', tag):
             failures.append(f'tag {tag} is not v plus a release version')
-        if root_pkg is not None and tag != 'v' + root_pkg['version']:
-            failures.append(f"tag {tag} does not match the root crate version {root_pkg['version']}")
         api = f'https://api.github.com/repos/{args.repo}'
         try:
             ref = get_json(f'{api}/git/ref/tags/{tag}', github=True)

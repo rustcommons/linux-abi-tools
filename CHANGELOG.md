@@ -15,7 +15,7 @@ no tag was moved and no crate was republished.
 
 Repository: releases now use the Rust Commons standard Trusted publishing
 pipeline (release gate, build, attestations, owner-approved publish, automatic
-GitHub Release, verification). Each GitHub Release will attach the five `.crate`
+GitHub Release, verification). Each GitHub Release will attach the released `.crate`
 files, their CycloneDX SBOMs, `SHA256SUMS` and a signed provenance bundle. The
 gate refuses a release without its dated changelog entry. No package changes.
 

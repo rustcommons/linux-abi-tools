@@ -41,7 +41,7 @@ dry runs (`gate` + `build`) are verified; the tag path is not yet.
   not rerun the workspace tests; the gate instead requires a successful `ci.yml`
   run on the tagged commit. Fold more qualification into `build` only if a
   release needs evidence that CI does not give.
-- [ ] **One SBOM per crate**: `build` attaches five CycloneDX files (one per crate)
+- [ ] **One SBOM per crate**: `build` attaches one CycloneDX file per released crate
   rather than one workspace SBOM; revisit if the org standard settles on a single file.
 - Not applicable: the spec's phase 2 (folding binary builds into the pipeline)
   concerns repositories that ship executables as release assets; this repository

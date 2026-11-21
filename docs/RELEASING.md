@@ -64,17 +64,20 @@ cannot be moved or deleted. The pipeline has six jobs:
 
 | Job | Runs | What it does |
 | --- | --- | --- |
-| Release gate (`gate`) | every run | On a `v*` tag, refuses the release unless the tag is annotated and equals `v` + the root version, the commit is reachable from `main` with a successful `ci.yml` run, all five crates carry the release version, `CHANGELOG.md` has the dated `## [X.Y.Z] - YYYY-MM-DD` entry, `docs/releases/vX.Y.Z.md` exists and the release-documentation check passes. Dry runs report and set `publish=false`. |
-| Build (`build`) | every run | Release-script tests; `cargo package --locked` of all five crates together in dependency order (this builds each from its packaged source); clean-VCS check; one CycloneDX SBOM per crate (cargo-cyclonedx 0.5.10, `--locked`); `SHA256SUMS`; artifact `release-X.Y.Z`. |
+| Release gate (`gate`) | every run | On a `v*` tag, refuses the release unless the tag is annotated and named `v` + a version, the commit is reachable from `main` with a successful `ci.yml` run, the release set (every crate whose version equals the tag) is non-empty and every other workspace crate is already on crates.io at its declared version, `CHANGELOG.md` has the dated `## [X.Y.Z] - YYYY-MM-DD` entry, `docs/releases/vX.Y.Z.md` exists and the release-documentation check passes. Dry runs use the highest declared version, report and set `publish=false`. |
+| Build (`build`) | every run | Release-script tests; `cargo package --locked` of the release set together in dependency order (this builds each from its packaged source); clean-VCS check; one CycloneDX SBOM per released crate (cargo-cyclonedx 0.5.10, `--locked`); `SHA256SUMS`; artifact `release-X.Y.Z`. |
 | Checksums and attestations (`attest`) | tag runs | Re-checks `SHA256SUMS` and signs SLSA build provenance for every `.crate` and SBOM, saved as `linux-abi-tools-X.Y.Z.crates.intoto.jsonl`. |
-| Publish to crates.io (`publish`) | tag runs, after owner approval of `crates-io` | Short-lived OIDC token; for each crate in dependency order, skips a version crates.io already has, repackages, `cmp`s against the attested archive and runs `cargo publish --locked` with Rust 1.90. |
+| Publish to crates.io (`publish`) | tag runs, after owner approval of `crates-io` | Short-lived OIDC token; for each release-set crate in dependency order, skips a version crates.io already has, repackages, `cmp`s against the attested archive and runs `cargo publish --locked` with Rust 1.90. |
 | GitHub release (`github-release`) | tag runs | Creates `vX.Y.Z` with `--verify-tag` from the committed notes (title = first heading) and attaches the `.crate` files, SBOMs, `SHA256SUMS` and provenance bundle. A re-run uploads only missing files. |
-| Verify publication (`verify`) | tag runs | Live release body equals the notes; crates.io index and official archives equal the attested archives ([verify-published-crates.py](../scripts/verify-published-crates.py)); `gh attestation verify` for every attached file; docs.rs for all five (a still-pending build is reported as pending, not a pass); clean `cargo install --locked` of `libc-abi-tools`, `kernel-abi-tools` and `linux-abi-scan`, with `libc-abi` and `kernel-seccomp` reporting the release version. |
+| Verify publication (`verify`) | tag runs | Live release body equals the notes; crates.io index and official archives equal the attested archives ([verify-published-crates.py](../scripts/verify-published-crates.py)); `gh attestation verify` for every attached file; docs.rs for each released crate (a still-pending build is reported as pending, not a pass); clean `cargo install --locked` of whichever of `libc-abi-tools`, `kernel-abi-tools` and `linux-abi-scan` are released, with `libc-abi` and `kernel-seccomp` reporting the release version. |
 
 Pull requests that touch the workflow, release scripts, `CHANGELOG.md`, release
 notes or crate manifests/lock, and manual runs, are dry runs of `gate` and `build`
-only. Packaging the five crates together lets the dry run of a version bump
-verify each crate against its unpublished siblings; at the tagged commit those
+only. Crate versions are independent as far as the pipeline is concerned:
+a tag releases exactly the crates at that version. When all five share the
+version, as under the current [versioning](#versioning) policy, all five are released.
+Packaging the release set together lets the dry run of a version bump verify
+each crate against its unpublished siblings; at the tagged commit those
 archives are byte-identical to each crate repackaged alone against crates.io,
 which the `publish` job checks with `cmp` (verified on v0.6.1, 2026-11-21).
 This pipeline does not replace independent review, runtime qualification or
@@ -302,8 +305,9 @@ Routine merges now use the registered documentation CI gate above.
 ## Cutting a release
 
 1. Keep `CHANGELOG.md` current: every user-visible change goes into `Unreleased`
-   in the PR that makes it. For an authorized new version, synchronize the five
-   manifests, internal requirements and lock (see [Versioning](#versioning)),
+   in the PR that makes it. For an authorized new version, bump the crates being
+   released, their internal requirements and the lock (all five under the
+   current [Versioning](#versioning) policy),
    move the `Unreleased` items into a dated `## [X.Y.Z] - YYYY-MM-DD` entry
    (the planned publication date), and write `docs/releases/vX.Y.Z.md`. Its first
    heading becomes the GitHub Release title (use `# linux-abi-tools X.Y.Z`).
