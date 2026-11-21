@@ -131,9 +131,11 @@ def checks(root: Path, args) -> tuple[str, list[str], list[str]]:
         except urllib.error.HTTPError as error:
             failures.append(f'cannot compare {args.sha} with main (HTTP {error.code})')
         try:
-            runs = get_json(f'{api}/actions/workflows/ci.yml/runs?head_sha={args.sha}&status=success',
+            # GitHub's status=success filter can miss completed runs for a
+            # head_sha, so read every run for the commit and check conclusions.
+            runs = get_json(f'{api}/actions/workflows/ci.yml/runs?head_sha={args.sha}&per_page=100',
                             github=True)
-            if runs['total_count'] == 0:
+            if not any(run.get('conclusion') == 'success' for run in runs.get('workflow_runs', [])):
                 failures.append(f'no successful CI run for {args.sha}; wait for CI on main, then re-run')
         except urllib.error.HTTPError as error:
             failures.append(f'cannot read CI runs (HTTP {error.code})')
