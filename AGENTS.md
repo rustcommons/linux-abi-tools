@@ -184,7 +184,9 @@ inputs and manual runs are dry runs of `gate` and `build` only. The gate
 a commit reachable from `main` with green CI, the dated changelog entry and
 `docs/releases/vX.Y.Z.md`. The release set is every workspace crate whose version
 equals the tag; every other workspace crate must already be on crates.io at its
-declared version. The release set is published in dependency order,
+declared version. Under the unchanged lockstep policy the release set is all five
+crates; partial sets are a pipeline capability, not a policy. The release set is
+published in dependency order,
 skips versions already on crates.io, and publishes only bytes identical (`cmp`)
 to the attested archive. The workflow creates the GitHub Release from the committed
 notes; maintainers no longer create it by hand.

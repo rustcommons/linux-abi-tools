@@ -73,9 +73,10 @@ cannot be moved or deleted. The pipeline has six jobs:
 
 Pull requests that touch the workflow, release scripts, `CHANGELOG.md`, release
 notes or crate manifests/lock, and manual runs, are dry runs of `gate` and `build`
-only. Crate versions are independent as far as the pipeline is concerned:
-a tag releases exactly the crates at that version. When all five share the
-version, as under the current [versioning](#versioning) policy, all five are released.
+only. The five crates stay in lockstep under the [versioning](#versioning)
+policy, so every release tag releases all five. As a capability only, the gate
+releases exactly the crates whose version equals the tag; this is not a policy
+change.
 Packaging the release set together lets the dry run of a version bump verify
 each crate against its unpublished siblings; at the tagged commit those
 archives are byte-identical to each crate repackaged alone against crates.io,
@@ -305,9 +306,8 @@ Routine merges now use the registered documentation CI gate above.
 ## Cutting a release
 
 1. Keep `CHANGELOG.md` current: every user-visible change goes into `Unreleased`
-   in the PR that makes it. For an authorized new version, bump the crates being
-   released, their internal requirements and the lock (all five under the
-   current [Versioning](#versioning) policy),
+   in the PR that makes it. For an authorized new version, synchronize the five
+   manifests, internal requirements and lock (see [Versioning](#versioning)),
    move the `Unreleased` items into a dated `## [X.Y.Z] - YYYY-MM-DD` entry
    (the planned publication date), and write `docs/releases/vX.Y.Z.md`. Its first
    heading becomes the GitHub Release title (use `# linux-abi-tools X.Y.Z`).
