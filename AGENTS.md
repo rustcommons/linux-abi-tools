@@ -110,8 +110,9 @@ every workflow and its cargo-libc mapping; keep it in step with changes.
   `libc-abi-tools` on `glibc-abilists` and `glibc-provider-sources` (default
   `provider-sources` feature; published on crates.io), and
   `linux-abi-tools` on the other four.
-- Distribution packages go to crates.io only; GitHub Releases carry reviewed
-  notes and source/registry links without standalone binary attachments
+- Distribution packages go to crates.io only. GitHub Releases carry the reviewed
+  notes plus only the owner-authorized release files listed under
+  [Release pipeline](#release-pipeline); no executables or other attachments
   (see [docs/RELEASING.md](docs/RELEASING.md)).
   Keep each manifest's `include` list minimal. The glibc ABI lists
   (LGPL-2.1-or-later) are published only in `glibc-abilists`, which must be
@@ -147,6 +148,10 @@ oldest-target runtime qualification on a real kernel.
 
 ## Release documentation
 
+- **Updating `CHANGELOG.md` is critical.** It is the source of the release notes,
+  and the release gate refuses to publish a version without its dated
+  `## [X.Y.Z] - YYYY-MM-DD` entry. Add each user-visible change to `Unreleased`
+  in the same PR as the change; never leave it for release time.
 - For a repository that ships versioned software, maintain a root `CHANGELOG.md` with an `Unreleased` section and dated, user-facing entries for shipped versions. Record noteworthy changes and their user impact as work is completed; do not substitute a roadmap, Git tag, CI log or validation report for a changelog.
 - Before publishing a version, commit its release notes under `docs/releases/vX.Y.Z.md` and link them, the changelog, and the maintained release policy. Explain changes, upgrade or dependency impact, validation and known limits; distinguish software changes from documentation-only releases.
 - A software release is not complete until its immutable source tag, applicable registry archives, GitHub Release notes, changelog, documentation, and required verification agree. GitHub Releases document the release; do not attach standalone binaries or other new distribution artifacts without authorization.
@@ -163,7 +168,33 @@ oldest-target runtime qualification on a real kernel.
 - Pin every external GitHub Action to its full commit SHA with its exact `# vX.Y.Z` tag in a trailing comment, on a Node 24 (or Docker/composite) runtime. Use explicit runner labels (`ubuntu-24.04`, `windows-2025`), never `-latest`; moving to Ubuntu 26.04 is a deliberate change. Pin `dtolnay/rust-toolchain` to the SHA of the intended toolchain branch, without a `toolchain:` input. Keep workflow permissions read-only; grant necessary write permissions only to the job that uses them. Disable checkout credential persistence.
 - Require the PR security jobs: zizmor (regular persona, including online audits), cargo-deny (RustSec advisories, licenses, bans, crates.io-only sources), and offline release-script controls. Fix findings or explain narrowly scoped suppressions inline. Keep Dependabot version updates monthly with a limit of two open PRs per ecosystem, retaining minor/patch groups and the seven-day cooldown; security updates remain immediate and independent of this schedule. Keep weekly Scorecard reporting active.
 - Dependabot PRs run core workspace fmt/clippy/tests, cargo-deny, zizmor, release-script unit tests, LF and GitHub-managed CodeQL. Gate provider/ABI/container/kernel qualification and non-core jobs by both actor and PR author, so a human rerun does not accidentally expand a bot PR. Human PRs, main pushes, `v*` tags and owner manual dispatch retain full qualification. Restrict push triggers to main/release tags to avoid feature-branch duplicates; every repository-defined PR workflow cancels superseded runs for the same PR, without canceling non-PR qualification or crate publication.
-- The crates.io publishing workflow must be named `.github/workflows/trusted-publishing.yml` (owner standard, 2026-11-15). Crate publication through it requires an immutable reviewed `v*` tag, the owner-approved `crates-io` environment, and per-crate Trusted Publisher registration. OIDC permission belongs only to publishing and Scorecard reporting jobs, for their respective services. Future crate uploads, including recovery, use only this workflow with owner environment approval; the owner-machine crates.io token was revoked on 2026-11-16. Preserve all package/release qualification gates; configuring automation authorizes no new release.
+- The crates.io publishing workflow must be named `.github/workflows/trusted-publishing.yml` (owner standard, 2026-11-15). Crate publication through it requires an immutable reviewed `v*` tag, the owner-approved `crates-io` environment, and per-crate Trusted Publisher registration. OIDC permission belongs only to the release `attest` (Sigstore) and `publish` (crates.io) jobs and Scorecard reporting, for their respective services. Future crate uploads, including recovery of a partial release (a re-run skips versions already on crates.io), use only this workflow with owner environment approval; the owner-machine crates.io token was revoked on 2026-11-16. Preserve all package/release qualification gates; configuring automation authorizes no new release.
+
+## Release pipeline
+
+Releases use the Rust Commons standard pipeline
+([spec](https://github.com/rustcommons/.github/blob/main/docs/TRUSTED-PUBLISHING.md),
+owner-approved 2026-11-21) in `.github/workflows/trusted-publishing.yml`; never
+rename the file or the `crates-io` environment. Jobs: `gate` (Release gate),
+`build` (Build), `attest` (Checksums and attestations), `publish` (Publish to
+crates.io, the owner's approval), `github-release` (GitHub release) and `verify`
+(Verify publication). A `v*` tag runs all six; pull requests that touch release
+inputs and manual runs are dry runs of `gate` and `build` only. The gate
+([scripts/release-gate.py](scripts/release-gate.py)) requires an annotated tag on
+a commit reachable from `main` with green CI, the dated changelog entry and
+`docs/releases/vX.Y.Z.md`. The release set is every workspace crate whose version
+equals the tag; every other workspace crate must already be on crates.io at its
+declared version. Under the unchanged lockstep policy the release set is all five
+crates; partial sets are a pipeline capability, not a policy. The release set is
+published in dependency order,
+skips versions already on crates.io, and publishes only bytes identical (`cmp`)
+to the attested archive. The workflow creates the GitHub Release from the committed
+notes; maintainers no longer create it by hand.
+
+On 2026-11-21 the owner authorized attaching exactly these files to each GitHub
+Release, and nothing else: the released `.crate` files, their CycloneDX SBOMs
+(`*.cdx.json`), `SHA256SUMS`, and the provenance bundle
+`linux-abi-tools-X.Y.Z.crates.intoto.jsonl`.
 
 ## Git conventions
 

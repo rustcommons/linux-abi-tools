@@ -1,56 +1,340 @@
-name: Publish crates (Trusted Publishing)
+# Rust Commons standard release pipeline; see
+# https://github.com/rustcommons/.github/blob/main/docs/TRUSTED-PUBLISHING.md
+# crates.io binds Trusted Publishing to this file name and the `crates-io`
+# environment; never rename either.
+name: Trusted publishing
 on:
   push:
     tags: ['v*']
-  # Release dry run: package and verify all five crates; no environment, token or upload.
+  # Dry runs: gate and build only, never publish.
   pull_request:
     paths:
       - '.github/workflows/trusted-publishing.yml'
-      - 'scripts/publish-crates.py'
+      - 'scripts/release-gate.py'
+      - 'scripts/check-release-docs.py'
+      - 'scripts/verify-published-crates.py'
+      - 'scripts/test-verify-published-crates.py'
+      - 'CHANGELOG.md'
+      - 'docs/releases/**'
+      # Version bumps of any workspace crate.
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'crates/*/Cargo.toml'
+  workflow_dispatch:
 permissions:
   contents: read
-# Serialize approved releases; never cancel a publication that may be partial.
-# PR dry runs use their own per-PR group and cancel superseded runs.
+# A tag run is never cancelled; only newer pushes to the same PR supersede.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('release-dry-run-{0}', github.event.pull_request.number) || 'crates-io-publish' }}
+  group: trusted-publishing-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  dry-run:
-    if: github.event_name == 'pull_request'
+  gate:
+    name: Release gate
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # Reads CI results for the tagged commit.
+      actions: read
+    outputs:
+      version: ${{ steps.gate.outputs.version }}
+      publish: ${{ steps.gate.outputs.publish }}
+      crates: ${{ steps.gate.outputs.crates }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
-      - run: rustc --version
-      - run: python3 scripts/test-publish-crates.py
-      - name: Package all five crates in publication order without uploading
-        run: python3 scripts/publish-crates.py --dry-run
-  publish:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      - name: Decide whether this run may publish
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/release-gate.py --event "$EVENT" --ref-name "$REF_NAME" \
+            --sha "$GITHUB_SHA" --repo "$GITHUB_REPOSITORY"
+
+  build:
+    name: Build
+    needs: gate
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      CRATES: ${{ needs.gate.outputs.crates }}
+      CARGO_BUILD_JOBS: 2
+      RUST_TEST_THREADS: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The same toolchain publishes the crates.
+      - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
+      - run: rustc --version
+      - name: Release-script controls
+        run: python3 scripts/test-verify-published-crates.py
+      - name: Package release crates
+        run: |
+          set -euo pipefail
+          dist="$RUNNER_TEMP/dist"
+          mkdir -p "$dist"
+          echo "DIST=$dist" >> "$GITHUB_ENV"
+          cargo fetch --locked
+          # The release set is every crate whose version equals the release
+          # version (crate versions are independent). Package it together, in
+          # dependency order, so each crate is verified against unpublished
+          # siblings in the set; others resolve from crates.io. This also builds
+          # every crate from its packaged source.
+          args=()
+          for crate in $(jq -r '.[]' <<<"$CRATES"); do args+=(-p "$crate"); done
+          test "${#args[@]}" -gt 0
+          cargo package --locked "${args[@]}"
+          for crate in $(jq -r '.[]' <<<"$CRATES"); do
+            cp "target/package/$crate-$VERSION.crate" "$dist/"
+          done
+      - name: Archives record this commit as a clean checkout
+        run: |
+          set -euo pipefail
+          for crate in $(jq -r '.[]' <<<"$CRATES"); do
+            info=$(tar -xzOf "$DIST/$crate-$VERSION.crate" "$crate-$VERSION/.cargo_vcs_info.json")
+            test "$(jq -r '.git.sha1' <<<"$info")" = "$GITHUB_SHA"
+            test "$(jq -r '.git.dirty // false' <<<"$info")" = false
+          done
+      - name: SBOMs and SHA256SUMS
+        run: |
+          set -euo pipefail
+          cargo install cargo-cyclonedx --version 0.5.10 --locked --root "$RUNNER_TEMP/tools"
+          # One SBOM per workspace crate, written next to each manifest.
+          "$RUNNER_TEMP/tools/bin/cargo-cyclonedx" cyclonedx --format json --spec-version 1.5 \
+            --target x86_64-unknown-linux-gnu
+          metadata=$(cargo metadata --locked --no-deps --format-version 1)
+          for crate in $(jq -r '.[]' <<<"$CRATES"); do
+            dir=$(jq -r --arg c "$crate" '.packages[] | select(.name == $c) | .manifest_path' <<<"$metadata" | xargs dirname)
+            mv "$dir/$crate.cdx.json" "$DIST/$crate-$VERSION.cdx.json"
+          done
+          (cd "$DIST" && sha256sum ./*.crate ./*.cdx.json | sed 's| \./| |' > SHA256SUMS && cat SHA256SUMS)
+      - name: Re-check SHA256SUMS
+        run: cd "$DIST" && sha256sum -c SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: release-${{ needs.gate.outputs.version }}
+          path: ${{ runner.temp }}/dist
+          if-no-files-found: error
+
+  attest:
+    name: Checksums and attestations
+    # `gate` is listed only so the condition can read its output.
+    needs: [gate, build]
+    if: needs.gate.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.gate.outputs.version }}
+          path: ${{ runner.temp }}/dist
+      - name: Re-check SHA256SUMS
+        run: cd "$RUNNER_TEMP/dist" && sha256sum -c SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        id: attest
+        with:
+          subject-path: |
+            ${{ runner.temp }}/dist/*.crate
+            ${{ runner.temp }}/dist/*.cdx.json
+      - name: Save the provenance bundle
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: cp "$BUNDLE" "$RUNNER_TEMP/dist/linux-abi-tools-$VERSION.crates.intoto.jsonl"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ needs.gate.outputs.version }}
+          path: ${{ runner.temp }}/dist
+          if-no-files-found: error
+          overwrite: true
+
+  publish:
+    name: Publish to crates.io
+    needs: [gate, build, attest]
+    if: needs.gate.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # The owner's approval click.
     environment: crates-io
     permissions:
       contents: read
-      # Exchange GitHub OIDC for a short-lived crates.io token after owner approval.
       id-token: write
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      CRATES: ${{ needs.gate.outputs.crates }}
+      CARGO_BUILD_JOBS: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
-      - name: Validate the immutable tag and workspace versions
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: python3 scripts/publish-crates.py --check-only --tag "$RELEASE_TAG"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.gate.outputs.version }}
+          path: ${{ runner.temp }}/dist
+      - name: Re-check SHA256SUMS
+        run: cd "$RUNNER_TEMP/dist" && sha256sum -c SHA256SUMS
       - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
         id: auth
-      - name: Publish in dependency order and verify official checksums
+      - name: Publish release crates in dependency order
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: python3 scripts/publish-crates.py --tag "$RELEASE_TAG"
+        run: |
+          set -euo pipefail
+          for crate in $(jq -r '.[]' <<<"$CRATES"); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' -A 'rustcommons-release' \
+              "https://crates.io/api/v1/crates/$crate/$VERSION")
+            if [ "$status" = 200 ]; then
+              echo "$crate $VERSION is already on crates.io; skipping."
+              continue
+            fi
+            # Publish only bytes identical to the checksummed, attested file.
+            # Earlier crates in the order are already on crates.io (cargo publish
+            # waits for them), so each crate repackages against the registry.
+            cargo package --locked -p "$crate"
+            cmp "target/package/$crate-$VERSION.crate" "$RUNNER_TEMP/dist/$crate-$VERSION.crate"
+            cargo publish --locked -p "$crate"
+          done
+
+  github-release:
+    name: GitHub release
+    needs: [gate, publish]
+    if: needs.gate.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.gate.outputs.version }}
+          path: ${{ runner.temp }}/dist
+      - name: Create the release from the committed notes; add only missing files
+        run: |
+          set -euo pipefail
+          dist="$RUNNER_TEMP/dist"
+          (cd "$dist" && sha256sum -c SHA256SUMS)
+          notes="docs/releases/v$VERSION.md"
+          title=$(grep -m1 '^# ' "$notes" | sed 's/^# //')
+          test -n "$title"
+          files=("$dist"/*.crate "$dist"/*.cdx.json "$dist/SHA256SUMS" "$dist/linux-abi-tools-$VERSION.crates.intoto.jsonl")
+          for f in "${files[@]}"; do test -f "$f"; done
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            existing=$(gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+            for f in "${files[@]}"; do
+              if grep -Fxq "$(basename "$f")" <<<"$existing"; then
+                echo "Keeping existing asset $(basename "$f")"
+              else
+                gh release upload "v$VERSION" "$f" --repo "$GITHUB_REPOSITORY"
+              fi
+            done
+          else
+            gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "$title" --notes-file "$notes" "${files[@]}"
+          fi
+
+  verify:
+    name: Verify publication
+    needs: [gate, github-release]
+    if: needs.gate.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      CRATES: ${{ needs.gate.outputs.crates }}
+      GH_TOKEN: ${{ github.token }}
+      CARGO_BUILD_JOBS: 2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
+      - name: Download the attached release files
+        run: |
+          set -euo pipefail
+          assets="$RUNNER_TEMP/assets"
+          mkdir -p "$assets"
+          gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" --dir "$assets"
+          (cd "$assets" && sha256sum -c SHA256SUMS)
+          echo "ASSETS=$assets" >> "$GITHUB_ENV"
+      - name: Live release body equals the committed notes
+        run: python3 scripts/check-release-docs.py --repo "$GITHUB_REPOSITORY" --published-tag "v$VERSION"
+      - name: crates.io checksums equal the attested crates
+        run: >-
+          python3 scripts/verify-published-crates.py --dist "$ASSETS" --version "$VERSION"
+          --commit "$GITHUB_SHA" --crates "$CRATES"
+      - name: Verify attestations of the attached files
+        run: |
+          set -euo pipefail
+          for f in "$ASSETS"/*.crate "$ASSETS"/*.cdx.json; do
+            gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/trusted-publishing.yml" \
+              --bundle "$ASSETS/linux-abi-tools-$VERSION.crates.intoto.jsonl"
+          done
+      - name: docs.rs builds (pending is reported as pending)
+        run: |
+          set -euo pipefail
+          pending=()
+          for crate in $(jq -r '.[]' <<<"$CRATES"); do
+            url="https://docs.rs/crate/$crate/$VERSION/status.json"
+            result=pending
+            for attempt in $(seq 1 40); do
+              body=$(curl -s -A 'rustcommons-release' -w '\n%{http_code}' "$url")
+              code=$(tail -n1 <<<"$body")
+              if [ "$code" = 200 ]; then
+                status=$(head -n -1 <<<"$body" | jq -r '.doc_status')
+                if [ "$status" = true ]; then result=built; break; fi
+                if [ "$status" = false ]; then echo "::error::docs.rs build failed for $crate $VERSION"; exit 1; fi
+              fi
+              sleep 30
+            done
+            echo "docs.rs $crate $VERSION: $result"
+            if [ "$result" = pending ]; then pending+=("$crate"); fi
+          done
+          if [ "${#pending[@]}" -gt 0 ]; then
+            echo "::warning::docs.rs builds still pending after the bounded wait, not a pass: ${pending[*]}"
+            echo "docs.rs: PENDING for ${pending[*]}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Clean locked installs of the released crates that ship executables
+        run: |
+          set -euo pipefail
+          export CARGO_HOME="$RUNNER_TEMP/published-cargo-home"
+          root="$RUNNER_TEMP/published-install"
+          # Crate versions are independent: check only crates in this release set.
+          for crate in $(jq -r '.[]' <<<"$CRATES"); do
+            case "$crate" in
+              libc-abi-tools|kernel-abi-tools|linux-abi-scan)
+                cargo install "$crate" --version "$VERSION" --locked --root "$root" ;;
+              *) continue ;;
+            esac
+            case "$crate" in
+              libc-abi-tools) test "$("$root/bin/libc-abi" --version)" = "libc-abi $VERSION" ;;
+              kernel-abi-tools)
+                test "$("$root/bin/kernel-seccomp" --version | head -n1)" = "kernel-seccomp $VERSION"
+                test -x "$root/bin/syscall-probe" ;;
+              # linux-abi-scan has no version flag; its help must still run.
+              linux-abi-scan) "$root/bin/linux-abi-scan" --help > /dev/null ;;
+            esac
+          done

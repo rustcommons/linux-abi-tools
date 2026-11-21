@@ -22,8 +22,10 @@ installs and parser fuzzing; historical skipped-CI evidence remains historical.
 The workspace publishes five crates to **crates.io only**, after
 [glibc-abilists](https://github.com/rustcommons/glibc-abilists), which holds the
 glibc ABI lists and is released from its own repository first. GitHub Releases document each existing source tag with reviewed release notes
-and source/registry links. No standalone binary bundles or additional release
-attachments are distributed. Nothing is published
+and source/registry links. From the next release, the pipeline also attaches
+the five `.crate` files, their SBOMs, `SHA256SUMS` and a provenance bundle
+(owner-authorized 2026-11-21); no executables or other attachments are
+distributed. Nothing is published
 without the maintainer's go-ahead.
 
 | Crate | Depends on | Contains |
@@ -53,16 +55,35 @@ is preserved alongside the completed publication record.
 
 ## Trusted Publishing setup and recovery
 
-The owner-approved 2026-11-15 security baseline adds
+Releases use the Rust Commons [standard release pipeline](https://github.com/rustcommons/.github/blob/main/docs/TRUSTED-PUBLISHING.md)
+(owner-approved 2026-11-21) in
 [`.github/workflows/trusted-publishing.yml`](../.github/workflows/trusted-publishing.yml).
-This exact filename is the owner's organization-wide standard for crate publishing.
-Its `publish` job runs only on a new `v*` tag, after the `crates-io` environment's
-required owner review. Its `dry-run` job runs on pull requests that change publishing
-inputs: it packages all five crates (`publish-crates.py --dry-run`) without the
-environment, a token or an upload. Main is PR-only and existing `v*` tags cannot be moved or deleted.
-Keep the qualification and archive audits below: this workflow does not replace
-independent review, docs.rs checks, release notes, runtime qualification, or legal
-gates. It creates no GitHub Release or binary assets.
+crates.io binds Trusted Publishing to that exact file name and the `crates-io`
+environment, so neither is ever renamed. Main is PR-only and existing `v*` tags
+cannot be moved or deleted. The pipeline has six jobs:
+
+| Job | Runs | What it does |
+| --- | --- | --- |
+| Release gate (`gate`) | every run | On a `v*` tag, refuses the release unless the tag is annotated and named `v` + a version, the commit is reachable from `main` with a successful `ci.yml` run, the release set (every crate whose version equals the tag) is non-empty and every other workspace crate is already on crates.io at its declared version, `CHANGELOG.md` has the dated `## [X.Y.Z] - YYYY-MM-DD` entry, `docs/releases/vX.Y.Z.md` exists and the release-documentation check passes. Dry runs use the highest declared version, report and set `publish=false`. |
+| Build (`build`) | every run | Release-script tests; `cargo package --locked` of the release set together in dependency order (this builds each from its packaged source); clean-VCS check; one CycloneDX SBOM per released crate (cargo-cyclonedx 0.5.10, `--locked`); `SHA256SUMS`; artifact `release-X.Y.Z`. |
+| Checksums and attestations (`attest`) | tag runs | Re-checks `SHA256SUMS` and signs SLSA build provenance for every `.crate` and SBOM, saved as `linux-abi-tools-X.Y.Z.crates.intoto.jsonl`. |
+| Publish to crates.io (`publish`) | tag runs, after owner approval of `crates-io` | Short-lived OIDC token; for each release-set crate in dependency order, skips a version crates.io already has, repackages, `cmp`s against the attested archive and runs `cargo publish --locked` with Rust 1.90. |
+| GitHub release (`github-release`) | tag runs | Creates `vX.Y.Z` with `--verify-tag` from the committed notes (title = first heading) and attaches the `.crate` files, SBOMs, `SHA256SUMS` and provenance bundle. A re-run uploads only missing files. |
+| Verify publication (`verify`) | tag runs | Live release body equals the notes; crates.io index and official archives equal the attested archives ([verify-published-crates.py](../scripts/verify-published-crates.py)); `gh attestation verify` for every attached file; docs.rs for each released crate (a still-pending build is reported as pending, not a pass); clean `cargo install --locked` of whichever of `libc-abi-tools`, `kernel-abi-tools` and `linux-abi-scan` are released, with `libc-abi` and `kernel-seccomp` reporting the release version. |
+
+Pull requests that touch the workflow, release scripts, `CHANGELOG.md`, release
+notes or crate manifests/lock, and manual runs, are dry runs of `gate` and `build`
+only. The five crates stay in lockstep under the [versioning](#versioning)
+policy, so every release tag releases all five. As a capability only, the gate
+releases exactly the crates whose version equals the tag; this is not a policy
+change.
+Packaging the release set together lets the dry run of a version bump verify
+each crate against its unpublished siblings; at the tagged commit those
+archives are byte-identical to each crate repackaged alone against crates.io,
+which the `publish` job checks with `cmp` (verified on v0.6.1, 2026-11-21).
+This pipeline does not replace independent review, runtime qualification or
+legal gates. On 2026-11-21 the owner authorized exactly these release
+attachments and nothing else.
 
 The owner must register these **exact** Trusted Publisher values on crates.io
 for each existing crate before approving the first automated publication:
@@ -75,24 +96,14 @@ for each existing crate before approving the first automated publication:
 | `libc-abi-tools` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
 | `linux-abi-tools` | `rustcommons` | `linux-abi-tools` | `trusted-publishing.yml` | `crates-io` |
 
-The job uses Rust 1.90, exchanges GitHub OIDC for a short-lived crates.io token,
-and runs `cargo publish --locked` in the order targets → kernel → scan → libc
-tools → umbrella. It checks all workspace versions against the exact checked-out
-clean tag, refuses any already-published version before uploading, then compares
-each generated archive's SHA-256 and clean VCS identity with the public registry
-index and official downloaded archive. Index/CDN propagation waits are bounded;
-network failures, mismatches, or a partial publication stop subsequent uploads.
-
 The owner revoked the owner-machine crates.io token on 2026-11-16. Future uploads
 use only this Trusted Publishing workflow with owner approval of `crates-io`;
-there is no owner-machine upload or local-token recovery route. The current
-workflow refuses an existing/partially published batch. Stop and present exact
-archive/index evidence for owner-reviewed recovery through Trusted Publishing;
-do not assume that partial recovery is already implemented. Never retag or
-replace published artifacts. No token is stored in this repository.
-Registering this workflow does not itself prove a successful OIDC publication;
-that remains unverified until the first future authorized release. No crates or
-tags are created as part of installing the security baseline.
+there is no owner-machine upload or local-token recovery route. After a partial
+failure, re-run the failed tag run: `publish` skips versions already on crates.io
+and `github-release` adds only missing files. Never retag or replace published
+artifacts. No token is stored in this repository. Version 0.6.1 was published
+through the previous single-job form of this workflow; the six-job pipeline is
+first used by the next authorized release.
 
 Primary references: [crates.io Trusted Publishing](https://forge.rust-lang.org/infra/docs/trusted-publishing.html),
 [authentication action](https://github.com/rust-lang/crates-io-auth-action),
@@ -294,44 +305,27 @@ Routine merges now use the registered documentation CI gate above.
 
 ## Cutting a release
 
-1. For an authorized new software version, synchronize the five manifests,
-   internal dependency requirements and lock as described by the versioning
-   policy. Move completed user-visible `Unreleased` changes into its dated
-   changelog entry and commit `docs/releases/vX.Y.Z.md` before publication.
-2. Run applicable validation from [AGENTS.md](../AGENTS.md), including the local
-   release-documentation gate and registered CI. Kernel code/profile changes
-   also need the local/container self-tests. Data, provenance/license and provider
-   gates retain their scope. Documentation backfill does not rerun these suites.
-3. For new crate publication, run `cargo package --workspace --locked`, inspect
-   all five archives/allowlists/licenses and VCS identity, and validate on the
-   exact approved source. Existing published versions are immutable; skip crate
-   publishing entirely when backfilling documentation.
-4. With required gates and explicit approval, create the new immutable source tag
-   on the exact approved release commit, then approve `crates-io` for the Trusted
-   Publishing workflow. It publishes in dependency order: `linux-targets` → `kernel-abi-tools` → `linux-abi-scan` → `libc-abi-tools`
-   → `linux-abi-tools`. Upstream glibc data/source crates must already be available
-   at the required versions. Do not publish from an owner-machine token.
-5. For existing-tag documentation, verify the existing tag/commit and preserve
-   it; never recreate, move or force-push a tag. Dated records of the former
-   local publication process remain historical, not a current release route.
-6. Verify official registry archives, checksums, non-yanked state, clean VCS and
-   all five versioned docs.rs builds/pages. Preserve source/package evidence
-   separately from later documentation commits and consumer adoption.
-7. After approval and a green documentation workflow, publish GitHub Release
-   notes from the reviewed committed file, with no attachments. For historical
-   backfill, work in ascending version order; older versions use `--latest=false`,
-   and only the actual newest stable version uses `--latest`:
-
-   ```sh
-   gh release create vX.Y.Z --verify-tag --title "vX.Y.Z — concise outcome" \
-     --notes-file docs/releases/vX.Y.Z.md --latest=false
-   ```
-
-   Use the final stable version's reviewed file with `--latest` instead of
-   `--latest=false`. Do not generate substitute bodies or falsify posting dates.
-8. Verify the live release tag, exact text and links, registry/source identity,
-   absence of unauthorized assets, and latest marker. Run the published checker
-   and its CI mode above before claiming release-documentation completion.
+1. Keep `CHANGELOG.md` current: every user-visible change goes into `Unreleased`
+   in the PR that makes it. For an authorized new version, synchronize the five
+   manifests, internal requirements and lock (see [Versioning](#versioning)),
+   move the `Unreleased` items into a dated `## [X.Y.Z] - YYYY-MM-DD` entry
+   (the planned publication date), and write `docs/releases/vX.Y.Z.md`. Its first
+   heading becomes the GitHub Release title (use `# linux-abi-tools X.Y.Z`).
+   **The notes are final before tagging**: the workflow publishes them verbatim.
+2. Run applicable validation from [AGENTS.md](../AGENTS.md). Kernel code/profile
+   changes also need the local/container self-tests. The release PR's dry run
+   (`gate` + `build`) and the full CI must be green; merge it normally.
+3. With explicit release authorization, create an annotated tag on the exact merge
+   commit and push it: `git tag -a vX.Y.Z -m "linux-abi-tools X.Y.Z" <merge-sha>`.
+4. The tag run executes `gate`, `build` and `attest`, then waits for the owner to
+   approve the `crates-io` environment. After approval, `publish` uploads the five
+   crates in dependency order, `github-release` creates the GitHub Release from
+   the committed notes with the authorized files attached, and `verify` checks the
+   result. **Maintainers no longer create the GitHub Release by hand.**
+5. Review the `verify` job. If docs.rs was still pending, confirm it later. Record
+   the release (archive checksums, provenance, docs.rs, consumer build) in a
+   follow-up PR. Never recreate, move or force-push a tag; dated records of the
+   former local and manual processes remain historical.
 
 A published crate version cannot be replaced. `cargo yank` only stops new
 lockfiles from selecting it; it is not a way to rewrite a release.
