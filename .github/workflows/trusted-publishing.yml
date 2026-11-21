@@ -2,22 +2,44 @@ name: Publish crates (Trusted Publishing)
 on:
   push:
     tags: ['v*']
+  # Release dry run: package and verify all five crates; no environment, token or upload.
+  pull_request:
+    paths:
+      - '.github/workflows/trusted-publishing.yml'
+      - 'scripts/publish-crates.py'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'crates/*/Cargo.toml'
 permissions:
   contents: read
 # Serialize approved releases; never cancel a publication that may be partial.
+# PR dry runs use their own per-PR group and cancel superseded runs.
 concurrency:
-  group: crates-io-publish
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('release-dry-run-{0}', github.event.pull_request.number) || 'crates-io-publish' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
+      - run: rustc --version
+      - run: python3 scripts/test-publish-crates.py
+      - name: Package all five crates in publication order without uploading
+        run: python3 scripts/publish-crates.py --dry-run
   publish:
-    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
     environment: crates-io
     permissions:
       contents: read
       # Exchange GitHub OIDC for a short-lived crates.io token after owner approval.
       id-token: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
@@ -25,7 +47,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: python3 scripts/publish-crates.py --check-only --tag "$RELEASE_TAG"
-      - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1
+      - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
         id: auth
       - name: Publish in dependency order and verify official checksums
         env:

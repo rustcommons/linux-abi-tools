@@ -40,6 +40,15 @@ class ReleaseControls(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         publish.validate("v1.2.3")
 
+    def test_dry_run_refuses_dirty_checkout_before_packaging(self):
+        with patch.object(publish, "check_manifests"), \
+             patch.object(publish.Path, "read_text", return_value='[package]\nname="libc-abi-tools"\nversion="1.2.3"'), \
+             patch.object(publish, "output", side_effect=["head", " M Cargo.toml"]), \
+             patch.object(publish.subprocess, "run") as run:
+            with self.assertRaises(ValueError):
+                publish.dry_run()
+            run.assert_not_called()
+
     def test_version_mismatch(self):
         with patch.object(publish.Path, "read_text", return_value='[package]\nname="wrong"\nversion="1.2.3"'):
             with self.assertRaises(ValueError):

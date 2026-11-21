@@ -20,6 +20,25 @@ fixture reusable workflow uses a local caller-commit reference, not a mutable
 remote ref. Its two narrow zizmor `self-repository` exceptions preserve syntax
 supported by the pinned actionlint and Scorecard parsers.
 
+## Runners, Actions and Rust toolchains
+
+- Jobs use explicit runner labels: `ubuntu-24.04` and `windows-2025`. Moving
+  labels such as `ubuntu-latest` are not used: by 2026-11-21 GitHub had started
+  moving `ubuntu-latest` jobs onto Ubuntu 26.04. Moving to Ubuntu 26.04 (or a
+  newer Windows image) must be a deliberate, reviewed change to every label.
+- Every JavaScript Action runs on Node 24; Docker and composite Actions have no
+  Node runtime of their own. Version comments name the exact release tag
+  (`# vX.Y.Z`) of the pinned SHA, except ClusterFuzzLite, which publishes only `v1`.
+- `dtolnay/rust-toolchain` is pinned to the commit of the branch named after the
+  intended toolchain (`1.99.0` for regular CI, `1.90.0` for MSRV and publishing),
+  never with a `toolchain:` input, which a SHA pin ignores. Each job's log
+  prints the `rustc --version` it actually used.
+- Pull requests that change the publishing workflow, the publish script, or crate
+  manifests/lock run the `dry-run` job of
+  [trusted-publishing.yml](../.github/workflows/trusted-publishing.yml). It
+  packages all five crates with Rust 1.90 and checks each archive's clean VCS
+  identity, without the `crates-io` environment, a token or an upload.
+
 ## Installation and image pins
 
 - Ubuntu packages come from apt with its signed metadata and are not version

@@ -36,16 +36,35 @@ def validate(tag):
     if not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag):
         raise ValueError("release tag must be vX.Y.Z")
     version = tag[1:]
-    for name, manifest in ORDER:
-        package = tomllib.loads(Path(manifest).read_text())["package"]
-        if (package["name"], package["version"]) != (name, version):
-            raise ValueError(f"{manifest}: package/version differs from tag")
+    check_manifests(version)
     head = output("git", "rev-parse", "HEAD")
     if output("git", "rev-parse", f"refs/tags/{tag}^{{commit}}") != head:
         raise ValueError("tag does not point to checked-out source")
     if output("git", "status", "--porcelain", "--untracked-files=normal"):
         raise ValueError("refusing a dirty release checkout")
     return version, head
+
+
+def check_manifests(version):
+    for name, manifest in ORDER:
+        package = tomllib.loads(Path(manifest).read_text())["package"]
+        if (package["name"], package["version"]) != (name, version):
+            raise ValueError(f"{manifest}: package/version differs from tag")
+
+
+def dry_run():
+    """Package all five crates from a clean checkout exactly as publication would."""
+    version = tomllib.loads(Path(ORDER[3][1]).read_text())["package"]["version"]
+    check_manifests(version)
+    head = output("git", "rev-parse", "HEAD")
+    if output("git", "status", "--porcelain", "--untracked-files=normal"):
+        raise ValueError("refusing a dirty release checkout")
+    subprocess.run(["cargo", "package", "--workspace", "--locked"], check=True)
+    metadata = json.loads(output("cargo", "metadata", "--locked", "--no-deps", "--format-version", "1"))
+    packages = Path(metadata["target_directory"]) / "package"
+    for name, _ in ORDER:
+        digest = archive_identity(packages / f"{name}-{version}.crate", name, version, head)
+        print(f"Packaged {name} {version} SHA256 {digest}", flush=True)
 
 
 def fetch(url):
@@ -105,9 +124,16 @@ def verify_published(name, version, expected):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tag", required=True)
+    parser.add_argument("--tag")
     parser.add_argument("--check-only", action="store_true")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="package and verify all crates without a tag, token or upload")
     args = parser.parse_args()
+    if args.dry_run:
+        dry_run()
+        return
+    if not args.tag:
+        parser.error("--tag is required unless --dry-run is given")
     version, head = validate(args.tag)
     print(f"Validated tag {args.tag}: {head}", flush=True)
     if args.check_only:
