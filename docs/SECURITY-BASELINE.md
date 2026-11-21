@@ -33,11 +33,12 @@ supported by the pinned actionlint and Scorecard parsers.
   intended toolchain (`1.99.0` for regular CI, `1.90.0` for MSRV and publishing),
   never with a `toolchain:` input, which a SHA pin ignores. Each job's log
   prints the `rustc --version` it actually used.
-- Pull requests that change the publishing workflow, the publish script, or crate
-  manifests/lock run the `dry-run` job of
-  [trusted-publishing.yml](../.github/workflows/trusted-publishing.yml). It
-  packages all five crates with Rust 1.90 and checks each archive's clean VCS
-  identity, without the `crates-io` environment, a token or an upload.
+- Pull requests that change the release workflow, release scripts, changelog,
+  release notes or crate manifests/lock dry-run
+  [trusted-publishing.yml](../.github/workflows/trusted-publishing.yml): its
+  `gate` and `build` jobs package all five crates with Rust 1.90, check each
+  archive's clean VCS identity and produce SBOMs and `SHA256SUMS`, without the
+  `crates-io` environment, a token or an upload.
 
 ## Installation and image pins
 

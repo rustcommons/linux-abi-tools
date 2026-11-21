@@ -1,6 +1,7 @@
 # Roadmap
 
-[0.6.0 release record](RELEASE-0.6.0.md) records the current producer release.
+[0.6.1 release record](RELEASE-0.6.1.md) records the current producer release;
+the [0.6.0 record](RELEASE-0.6.0.md) is historical.
 [0.3.3 release qualification](REVIEW-FIXES.md#published-033-archives-and-documentation)
 is historical. [0.3.2 qualification](RELEASE-CANDIDATE-0.3.2.md) and
 [its dated plan](RELEASE-PLAN.md) preserve historical scope and dependency analysis.
@@ -23,6 +24,30 @@ The kernel crate has its own [roadmap](../crates/kernel-abi-tools/docs/ROADMAP.m
 Version [0.3.2](RELEASE-CANDIDATE-0.3.2.md) ships stdout broken-pipe fixes for
 all three workspace CLIs, including shared provider CLI output. These fixes are
 complete; real old-target qualification and the unrelated work below remain open.
+
+## Release pipeline
+
+Adopted 2026-11-21 (owner-approved): the Rust Commons
+[standard Trusted publishing pipeline](https://github.com/rustcommons/.github/blob/main/docs/TRUSTED-PUBLISHING.md),
+see [RELEASING](RELEASING.md#trusted-publishing-setup-and-recovery). Pull-request
+dry runs (`gate` + `build`) are verified; the tag path is not yet.
+
+- [ ] **First real use** at the next authorized release: confirm `attest`,
+  `publish`, `github-release` and `verify` end to end, then record the run.
+  Published 0.6.1 and earlier are not re-tagged, re-released or given attachments.
+- [ ] **`linux-abi-scan --version`**: the binary has no version flag, so `verify`
+  checks only that its help runs. Adding the flag is a CLI change for a release.
+- [ ] **Build-time qualification**: `build` packages and builds the crates but does
+  not rerun the workspace tests; the gate instead requires a successful `ci.yml`
+  run on the tagged commit. Fold more qualification into `build` only if a
+  release needs evidence that CI does not give.
+- [ ] **One SBOM per crate**: `build` attaches five CycloneDX files (one per crate)
+  rather than one workspace SBOM; revisit if the org standard settles on a single file.
+- Not applicable: the spec's phase 2 (folding binary builds into the pipeline)
+  concerns repositories that ship executables as release assets; this repository
+  ships crates only.
+- Org rollout tracker: the `.github` repository's table still lists this
+  repository as planned; update it when this adoption merges.
 
 ## Deferred qualification
 

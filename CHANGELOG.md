@@ -13,6 +13,12 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+Repository: releases now use the Rust Commons standard Trusted publishing
+pipeline (release gate, build, attestations, owner-approved publish, automatic
+GitHub Release, verification). Each GitHub Release will attach the five `.crate`
+files, their CycloneDX SBOMs, `SHA256SUMS` and a signed provenance bundle. The
+gate refuses a release without its dated changelog entry. No package changes.
+
 CI only: explicit `ubuntu-24.04`/`windows-2025` runners instead of moving
 `-latest` labels, exact Action version comments, and a release packaging dry run
 on pull requests that touch publishing. No package changes.
