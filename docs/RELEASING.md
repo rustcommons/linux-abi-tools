@@ -56,8 +56,10 @@ is preserved alongside the completed publication record.
 The owner-approved 2026-11-15 security baseline adds
 [`.github/workflows/trusted-publishing.yml`](../.github/workflows/trusted-publishing.yml).
 This exact filename is the owner's organization-wide standard for crate publishing.
-It runs only on a new `v*` tag, after the `crates-io` environment's required
-owner review. Main is PR-only and existing `v*` tags cannot be moved or deleted.
+Its `publish` job runs only on a new `v*` tag, after the `crates-io` environment's
+required owner review. Its `dry-run` job runs on pull requests that change publishing
+inputs: it packages all five crates (`publish-crates.py --dry-run`) without the
+environment, a token or an upload. Main is PR-only and existing `v*` tags cannot be moved or deleted.
 Keep the qualification and archive audits below: this workflow does not replace
 independent review, docs.rs checks, release notes, runtime qualification, or legal
 gates. It creates no GitHub Release or binary assets.

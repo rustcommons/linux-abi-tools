@@ -13,6 +13,10 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+CI only: explicit `ubuntu-24.04`/`windows-2025` runners instead of moving
+`-latest` labels, exact Action version comments, and a release packaging dry run
+on pull requests that touch publishing. No package changes.
+
 ## [0.6.1] - 2026-11-19
 
 Patch release of all five crates, published to crates.io on this UTC date.
