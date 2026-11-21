@@ -13,10 +13,10 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
-Repository: the publish job now repackages and compares every crate before the
+Repository: nothing compiles in the publish job any more. It repackages with
+`--no-verify` and compares every crate against the attested archive before the
 crates.io token is minted, and sets the token only on the `cargo publish
---no-verify` step, so no build script runs while a registry credential is
-present. Release dry runs no longer run for pull requests from forks. No
+--no-verify` step. The build job still builds every packaged crate. Release dry runs no longer run for pull requests from forks. No
 package changes.
 
 Repository: releases now use the Rust Commons standard Trusted publishing
