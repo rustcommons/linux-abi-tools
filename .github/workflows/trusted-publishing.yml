@@ -30,6 +30,9 @@ concurrency:
 jobs:
   gate:
     name: Release gate
+    # Pull requests from forks get no dry run: this workflow defines jobs that
+    # request id-token, so it runs only for branches in this repository.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -58,6 +61,7 @@ jobs:
   build:
     name: Build
     needs: gate
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -188,26 +192,46 @@ jobs:
           path: ${{ runner.temp }}/dist
       - name: Re-check SHA256SUMS
         run: cd "$RUNNER_TEMP/dist" && sha256sum -c SHA256SUMS
-      - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
-        id: auth
-      - name: Publish release crates in dependency order
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+      # No registry token exists yet: packaging builds each crate from its
+      # packaged source, which runs dependency build scripts.
+      - name: Repackage unpublished release crates and compare with the attested files
         run: |
           set -euo pipefail
+          pending=()
           for crate in $(jq -r '.[]' <<<"$CRATES"); do
             status=$(curl -s -o /dev/null -w '%{http_code}' -A 'rustcommons-release' \
               "https://crates.io/api/v1/crates/$crate/$VERSION")
             if [ "$status" = 200 ]; then
               echo "$crate $VERSION is already on crates.io; skipping."
-              continue
+            else
+              pending+=("$crate")
             fi
-            # Publish only bytes identical to the checksummed, attested file.
-            # Earlier crates in the order are already on crates.io (cargo publish
-            # waits for them), so each crate repackages against the registry.
-            cargo package --locked -p "$crate"
+          done
+          echo "PENDING=${pending[*]}" >> "$GITHUB_ENV"
+          if [ "${#pending[@]}" -eq 0 ]; then exit 0; fi
+          # Package the pending crates together, as `build` did, so each is
+          # verified against its unpublished siblings.
+          args=()
+          for crate in "${pending[@]}"; do args+=(-p "$crate"); done
+          cargo package --locked "${args[@]}"
+          for crate in "${pending[@]}"; do
             cmp "target/package/$crate-$VERSION.crate" "$RUNNER_TEMP/dist/$crate-$VERSION.crate"
-            cargo publish --locked -p "$crate"
+          done
+      - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
+        if: env.PENDING != ''
+        id: auth
+      # The token is set only on this step, which runs no build: --no-verify
+      # uploads the already-checked archives without compiling anything.
+      - name: Publish release crates in dependency order
+        if: env.PENDING != ''
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          set -euo pipefail
+          for crate in $PENDING; do
+            cargo publish --locked --no-verify -p "$crate"
+            # The uploaded archive must still be the attested one.
+            cmp "target/package/$crate-$VERSION.crate" "$RUNNER_TEMP/dist/$crate-$VERSION.crate"
           done
 
   github-release:

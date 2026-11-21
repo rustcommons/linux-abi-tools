@@ -188,7 +188,9 @@ declared version. Under the unchanged lockstep policy the release set is all fiv
 crates; partial sets are a pipeline capability, not a policy. The release set is
 published in dependency order,
 skips versions already on crates.io, and publishes only bytes identical (`cmp`)
-to the attested archive. The workflow creates the GitHub Release from the committed
+to the attested archive. The crates.io token is minted only after packaging and
+`cmp`, and is set only on the `cargo publish --no-verify` step: never expose a
+registry token to a step that compiles code. Dry runs skip pull requests from forks. The workflow creates the GitHub Release from the committed
 notes; maintainers no longer create it by hand.
 
 On 2026-11-21 the owner authorized attaching exactly these files to each GitHub
