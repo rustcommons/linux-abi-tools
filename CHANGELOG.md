@@ -13,6 +13,12 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+Repository: nothing compiles in the publish job any more. It repackages with
+`--no-verify` and compares every crate against the attested archive before the
+crates.io token is minted, and sets the token only on the `cargo publish
+--no-verify` step. The build job still builds every packaged crate. Release dry runs no longer run for pull requests from forks. No
+package changes.
+
 Repository: releases now use the Rust Commons standard Trusted publishing
 pipeline (release gate, build, attestations, owner-approved publish, automatic
 GitHub Release, verification). Each GitHub Release will attach the released `.crate`
