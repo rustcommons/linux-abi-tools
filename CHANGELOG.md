@@ -13,6 +13,10 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+Repository: release provenance now uses the unified `actions/attest` action.
+Attestation subjects, bundle collection, workflow signer identity and verification
+policy are unchanged. No package changes.
+
 Repository: nothing compiles in the publish job any more. It repackages with
 `--no-verify` and compares every crate against the attested archive before the
 crates.io token is minted, and sets the token only on the `cargo publish
