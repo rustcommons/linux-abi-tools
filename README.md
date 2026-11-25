@@ -58,6 +58,31 @@ CLI package. See [library APIs](https://github.com/rustcommons/linux-abi-tools/b
 and [docs.rs](https://docs.rs/linux-abi-tools). For fine-grained libc feature
 selection, depend on `libc-abi-tools` directly; see [feature choices](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/USING-LIBC-ABI.md#library-use).
 
+## Verify release downloads
+
+Future releases include `SHA256SUMS.asc` alongside `SHA256SUMS`. Releases through
+0.6.1 retain their original layout. Download all assets from the same release.
+Obtain the [Rust Commons public key](https://github.com/rustcommons/linux-abi-tools/blob/main/.github/release-signing-key.asc)
+and confirm its primary fingerprint is
+**B281C3010A76A11737B4D066C7396F6EA7647CC6** before importing it.
+In the directory containing the downloaded assets and `release-signing-key.asc`:
+
+```sh
+export GNUPGHOME="$(mktemp -d)"
+chmod 700 "$GNUPGHOME"
+trap 'gpgconf --kill gpg-agent; rm -rf "$GNUPGHOME"' EXIT
+gpg --show-keys --with-fingerprint release-signing-key.asc
+# Confirm the primary fingerprint above matches the published pin.
+gpg --import release-signing-key.asc
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum --check SHA256SUMS
+```
+
+Both verification commands must succeed. For the full release acceptance policy
+(revoked-key refusal and signing-subkey expiry checks), use the pinned verifier
+in the [release guide](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/RELEASING.md#openpgp-release-verification)
+which enforces the fingerprint and GnuPG status rules automatically.
+
 ## Guides
 
 - [Workflows](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/WORKFLOWS.md): choose targets, inspect files, simulate kernels,
