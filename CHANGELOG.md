@@ -13,6 +13,11 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+Repository: release-signature verification accepts a valid signature from a new
+non-expiring signing subkey when an older sibling subkey has expired. Expiry
+checks apply only to `EXPKEYSIG`; historical pre-expiry signatures still verify.
+No package changes.
+
 Repository: future releases include `SHA256SUMS.asc`, an OpenPGP signature
 verified against the pinned Rust Commons public key before crates.io publishing
 and again from the published release. Verification rejects revoked keys and

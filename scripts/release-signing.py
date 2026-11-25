@@ -68,7 +68,8 @@ def check_signature_status(status, listing, expected):
     # VALIDSIG's last field identifies the primary even for subkey signatures.
     if len(good) != 1 or len(valid) != 1 or len(valid[0]) != 11 or valid[0][-1] != expected:
         raise ValueError('Expected exactly one good signature from the pinned primary')
-    if any(r[0] in ('EXPKEYSIG', 'KEYEXPIRED') for r in records):
+    # KEYEXPIRED can describe a sibling; only EXPKEYSIG concerns this signature.
+    if any(r[0] == 'EXPKEYSIG' for r in records):
         # Look up expiry for the actual signing fingerprint, not the primary.
         expiry = None
         current_expiry = None
