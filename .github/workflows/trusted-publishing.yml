@@ -11,6 +11,11 @@ on:
     paths:
       - '.github/workflows/trusted-publishing.yml'
       - 'scripts/release-gate.py'
+      - 'scripts/release-signing.py'
+      - 'scripts/test-release-signing.py'
+      - 'scripts/github-release.py'
+      - 'scripts/test-github-release.py'
+      - '.github/release-signing-key.asc'
       - 'scripts/check-release-docs.py'
       - 'scripts/verify-published-crates.py'
       - 'scripts/test-verify-published-crates.py'
@@ -79,7 +84,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
       - run: rustc --version
       - name: Release-script controls
-        run: python3 scripts/test-verify-published-crates.py
+        run: |
+          python3 scripts/test-verify-published-crates.py
+          python3 scripts/test-release-signing.py
+          python3 scripts/test-github-release.py
       - name: Package release crates
         run: |
           set -euo pipefail
@@ -218,6 +226,18 @@ jobs:
           for crate in "${pending[@]}"; do
             cmp "target/package/$crate-$VERSION.crate" "$RUNNER_TEMP/dist/$crate-$VERSION.crate"
           done
+      # Always sign, including when every crate is already published.
+      - name: Sign and independently verify release checksums
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          RELEASE_SIGNING_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_PASSPHRASE }}
+        run: python3 scripts/release-signing.py sign --dist "$RUNNER_TEMP/dist"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-signature-${{ needs.gate.outputs.version }}
+          path: ${{ runner.temp }}/dist/SHA256SUMS.asc
+          if-no-files-found: error
+          overwrite: true
       - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
         if: env.PENDING != ''
         id: auth
@@ -254,29 +274,17 @@ jobs:
         with:
           name: release-${{ needs.gate.outputs.version }}
           path: ${{ runner.temp }}/dist
-      - name: Create the release from the committed notes; add only missing files
-        run: |
-          set -euo pipefail
-          dist="$RUNNER_TEMP/dist"
-          (cd "$dist" && sha256sum -c SHA256SUMS)
-          notes="docs/releases/v$VERSION.md"
-          title=$(grep -m1 '^# ' "$notes" | sed 's/^# //')
-          test -n "$title"
-          files=("$dist"/*.crate "$dist"/*.cdx.json "$dist/SHA256SUMS" "$dist/linux-abi-tools-$VERSION.crates.intoto.jsonl")
-          for f in "${files[@]}"; do test -f "$f"; done
-          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            existing=$(gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
-            for f in "${files[@]}"; do
-              if grep -Fxq "$(basename "$f")" <<<"$existing"; then
-                echo "Keeping existing asset $(basename "$f")"
-              else
-                gh release upload "v$VERSION" "$f" --repo "$GITHUB_REPOSITORY"
-              fi
-            done
-          else
-            gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --verify-tag \
-              --title "$title" --notes-file "$notes" "${files[@]}"
-          fi
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-signature-${{ needs.gate.outputs.version }}
+          path: ${{ runner.temp }}/dist
+      - name: Verify signature and every checksum before creating a release
+        run: python3 scripts/release-signing.py verify --dist "$RUNNER_TEMP/dist"
+      - name: Create or resume a draft, check every asset, then publish
+        run: >-
+          python3 scripts/github-release.py --repo "$GITHUB_REPOSITORY"
+          --version "$VERSION" --dist "$RUNNER_TEMP/dist"
+          --notes "docs/releases/v$VERSION.md"
 
   verify:
     name: Verify publication
@@ -302,7 +310,7 @@ jobs:
           assets="$RUNNER_TEMP/assets"
           mkdir -p "$assets"
           gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" --dir "$assets"
-          (cd "$assets" && sha256sum -c SHA256SUMS)
+          python3 scripts/release-signing.py verify --dist "$assets"
           echo "ASSETS=$assets" >> "$GITHUB_ENV"
       - name: Live release body equals the committed notes
         run: python3 scripts/check-release-docs.py --repo "$GITHUB_REPOSITORY" --published-tag "v$VERSION"

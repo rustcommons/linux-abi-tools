@@ -199,6 +199,20 @@ Release, and nothing else: the released `.crate` files, their CycloneDX SBOMs
 (`*.cdx.json`), `SHA256SUMS`, and the provenance bundle
 `linux-abi-tools-X.Y.Z.crates.intoto.jsonl`.
 
+On 2026-11-25 the owner additionally authorized `SHA256SUMS.asc`, an
+OpenPGP detached signature of `SHA256SUMS`, as a release attachment. The committed
+public key is `.github/release-signing-key.asc`; pin primary fingerprint
+`B281C3010A76A11737B4D066C7396F6EA7647CC6`. Only the publish signing step may
+receive `RELEASE_SIGNING_KEY` and `RELEASE_SIGNING_PASSPHRASE` from the `crates-io`
+environment. Sign and verify in separate temporary GnuPG homes, enforce the
+primary fingerprint from `VALIDSIG`, kill their agents and remove both homes
+before token minting. Signing runs even when all crates are already published.
+Nothing compiles in the publish job. PR tests use only ephemeral throwaway keys;
+production signing/verification has no fingerprint override or test mode.
+Create releases as drafts, check metadata and every asset's size and downloaded
+SHA-256 before and after publication, never replace an asset, and never modify
+an already-published release. Existing historical releases remain unchanged.
+
 ## Git conventions
 
 **No tool attribution, anywhere.** Do not add `Co-Authored-By: Claude ...` trailers,

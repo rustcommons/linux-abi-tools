@@ -13,6 +13,12 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+Repository: future releases include `SHA256SUMS.asc`, an OpenPGP signature
+verified against the pinned Rust Commons public key before crates.io publishing
+and again from the published release. GitHub releases are assembled as drafts,
+with metadata and every asset checked before publication; existing assets are
+never replaced. PR dry runs test signing with a throwaway key. No package changes.
+
 Repository: release provenance now uses the unified `actions/attest` action.
 Attestation subjects, bundle collection, workflow signer identity and verification
 policy are unchanged. No package changes.
