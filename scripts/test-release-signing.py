@@ -119,6 +119,36 @@ class SigningControls(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'at or after'):
                     signing.check_signature_status('\n'.join(altered), listing, primary)
 
+    def test_expired_sibling_does_not_reject_new_nonexpiring_subkey(self):
+        created = int(time.time()) - 3 * 86400
+        with signing.gnupg_home() as home, tempfile.TemporaryDirectory() as tmp:
+            dist = Path(tmp)
+            (dist / 'SHA256SUMS').write_text('release across signing key rotation')
+            primary, old = self.generate_key(home, created, '1d')
+            signature = dist / 'SHA256SUMS.asc'
+            signing.gpg(home, '--faked-system-time', str(created + 60) + '!',
+                        '--local-user', old + '!', '--armor', '--detach-sign',
+                        '--output', str(signature), str(dist / 'SHA256SUMS'))
+            historical_signature = signature.read_bytes()
+            signing.gpg(home, '--pinentry-mode', 'loopback', '--passphrase-fd', '0',
+                        '--quick-add-key', primary, 'ed25519', 'sign', '0', data=b'\n')
+            listing = signing.gpg(home, '--with-colons', '--fingerprint', '--list-keys')
+            new = [line.split(':')[9] for line in listing.splitlines() if line.startswith('fpr:')][-1]
+            self.assertNotEqual(old, new)
+            public = signing.gpg(home, '--armor', '--export').encode()
+            signature.unlink()
+            signing.gpg(home, '--local-user', new + '!', '--armor', '--detach-sign',
+                        '--output', str(signature), str(dist / 'SHA256SUMS'))
+            status = signing.gpg(home, '--status-fd', '1', '--verify', str(signature),
+                                 str(dist / 'SHA256SUMS'), allow_failure=True)
+            self.assertIn('[GNUPG:] KEYEXPIRED ', status)
+            self.assertIn('[GNUPG:] GOODSIG ', status)
+            self.assertNotIn('[GNUPG:] EXPKEYSIG ', status)
+            signing._verify_signature(dist, public, primary)
+            # The same rotated public key must still verify the old signature.
+            signature.write_bytes(historical_signature)
+            signing._verify_signature(dist, public, primary)
+
     def test_status_failures_and_signature_counts(self):
         good = '[GNUPG:] GOODSIG key signer\n'
         valid = f'[GNUPG:] VALIDSIG {self.subkey} 2026-11-25 1 0 4 0 22 8 00 {self.fingerprint}\n'
