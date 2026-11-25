@@ -29,14 +29,14 @@ def gnupg_home():
                            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def gpg(home, *args, data=None):
+def gpg(home, *args, data=None, allow_failure=False):
     # Never forward release secrets to child environments or surface stderr
     # from key import/signing (including exception diagnostics).
     env = {k: v for k, v in os.environ.items()
            if k not in ('RELEASE_SIGNING_KEY', 'RELEASE_SIGNING_PASSPHRASE')}
     result = subprocess.run(['gpg', '--no-options', '--homedir', str(home), '--batch', *args],
                             input=data, capture_output=True, env=env)
-    if result.returncode:
+    if result.returncode and not allow_failure:
         raise ValueError('GnuPG operation failed')
     return result.stdout.decode()
 
@@ -57,16 +57,45 @@ def import_public(home, key, expected):
         raise ValueError('Public key primary fingerprint mismatch')
 
 
+def check_signature_status(status, listing, expected):
+    records = [line.split()[1:] for line in status.splitlines()
+               if line.startswith('[GNUPG:] ')]
+    forbidden = {'REVKEYSIG', 'KEYREVOKED', 'BADSIG', 'ERRSIG', 'EXPSIG', 'NO_PUBKEY'}
+    if any(record[0] in forbidden for record in records):
+        raise ValueError('Revoked, bad, expired-signature or unknown-key status')
+    good = [r for r in records if r[0] in ('GOODSIG', 'EXPKEYSIG')]
+    valid = [r for r in records if r[0] == 'VALIDSIG']
+    # VALIDSIG's last field identifies the primary even for subkey signatures.
+    if len(good) != 1 or len(valid) != 1 or len(valid[0]) != 11 or valid[0][-1] != expected:
+        raise ValueError('Expected exactly one good signature from the pinned primary')
+    if any(r[0] in ('EXPKEYSIG', 'KEYEXPIRED') for r in records):
+        # Look up expiry for the actual signing fingerprint, not the primary.
+        expiry = None
+        current_expiry = None
+        for line in listing.splitlines():
+            fields = line.split(':')
+            if fields[0] in ('pub', 'sub'):
+                current_expiry = fields[6]
+            elif fields[0] == 'fpr' and fields[9] == valid[0][1]:
+                expiry = current_expiry
+                break
+        timestamp = valid[0][3]  # GnuPG status field 5 (including [GNUPG:]).
+        if not expiry or not expiry.isdecimal() or not timestamp.isdecimal():
+            raise ValueError('Missing signing key expiry or signature timestamp')
+        if int(expiry) <= 0 or int(timestamp) >= int(expiry):
+            raise ValueError('Signature was made at or after signing key expiry')
+
+
 def _verify_signature(dist, public_key, expected):
     with gnupg_home() as home:
         import_public(home, public_key, expected)
+        # Like the org reference, decide from all status records, even if gpg
+        # exits nonzero. Missing/invalid records fail closed below.
         status = gpg(home, '--status-fd', '1', '--verify',
-                     str(dist / 'SHA256SUMS.asc'), str(dist / 'SHA256SUMS'))
-        valid = [line.split() for line in status.splitlines()
-                 if line.startswith('[GNUPG:] VALIDSIG ')]
-        # VALIDSIG's last field identifies the primary key even for subkey signatures.
-        if len(valid) != 1 or len(valid[0]) != 12 or valid[0][-1] != expected:
-            raise ValueError('Signature primary fingerprint mismatch')
+                     str(dist / 'SHA256SUMS.asc'), str(dist / 'SHA256SUMS'),
+                     allow_failure=True)
+        listing = gpg(home, '--with-colons', '--fingerprint', '--list-keys')
+        check_signature_status(status, listing, expected)
 
 
 def _verify(dist, public_key, expected):

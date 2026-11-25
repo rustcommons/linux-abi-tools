@@ -78,9 +78,10 @@ gpg --verify SHA256SUMS.asc SHA256SUMS
 sha256sum --check SHA256SUMS
 ```
 
-Both verification commands must succeed. The
-[release guide](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/RELEASING.md#openpgp-release-verification)
-also provides a verifier that enforces the fingerprint automatically.
+Both verification commands must succeed. For the full release acceptance policy
+(revoked-key refusal and signing-subkey expiry checks), use the pinned verifier
+in the [release guide](https://github.com/rustcommons/linux-abi-tools/blob/main/docs/RELEASING.md#openpgp-release-verification)
+which enforces the fingerprint and GnuPG status rules automatically.
 
 ## Guides
 

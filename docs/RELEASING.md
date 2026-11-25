@@ -67,7 +67,7 @@ cannot be moved or deleted. The pipeline has six jobs:
 | Release gate (`gate`) | every run except pull requests from forks | On a `v*` tag, refuses the release unless the tag is annotated and named `v` + a version, the commit is reachable from `main` with a successful `ci.yml` run, the release set (every crate whose version equals the tag) is non-empty and every other workspace crate is already on crates.io at its declared version, `CHANGELOG.md` has the dated `## [X.Y.Z] - YYYY-MM-DD` entry, `docs/releases/vX.Y.Z.md` exists and the release-documentation check passes. Dry runs use the highest declared version, report and set `publish=false`. |
 | Build (`build`) | every run except pull requests from forks | Release-script tests; `cargo package --locked` of the release set together in dependency order (this builds each from its packaged source); clean-VCS check; one CycloneDX SBOM per released crate (cargo-cyclonedx 0.5.10, `--locked`); `SHA256SUMS`; artifact `release-X.Y.Z`. |
 | Checksums and attestations (`attest`) | tag runs | Re-checks `SHA256SUMS` and signs SLSA build provenance for every `.crate` and SBOM, saved as `linux-abi-tools-X.Y.Z.crates.intoto.jsonl`. |
-| Publish to crates.io (`publish`) | tag runs, after owner approval of `crates-io` | Nothing compiles in this job, because it holds `id-token` and the `crates-io` environment: `build` already built every packaged source. It skips versions crates.io already has, repackages the rest with `cargo package --locked --no-verify` and `cmp`s each against the attested archive. It signs `SHA256SUMS` and immediately verifies against the committed public key in a separate temporary home, even when all crates are already published. Both GnuPG homes and their agents are removed. Only then it mints the short-lived token, set on a single step that runs `cargo publish --locked --no-verify` per crate in dependency order with Rust 1.90. |
+| Publish to crates.io (`publish`) | tag runs, after owner approval of `crates-io` | Nothing compiles in this job, because it holds `id-token` and the `crates-io` environment: `build` already built every packaged source. It first signs `SHA256SUMS` and immediately verifies against the committed public key in a separate temporary home, even when all crates are already published. Both GnuPG homes and their agents are removed before any third-party action. The runner's own rustup selects Rust 1.90.0 after signing. It skips versions crates.io already has, repackages the rest with `cargo package --locked --no-verify` and `cmp`s each against the attested archive. Only then it mints the short-lived token, set on a single step that runs `cargo publish --locked --no-verify` per crate in dependency order with Rust 1.90. |
 | GitHub release (`github-release`) | tag runs | Creates `vX.Y.Z` as a draft with `--verify-tag` from the committed notes (title = first heading) and attaches the `.crate` files, SBOMs, `SHA256SUMS`, `SHA256SUMS.asc` and provenance bundle. Checks tag, title, body, state and every asset by name, size and downloaded SHA-256 before publishing and again afterwards. A re-run resumes a draft and adds only missing assets; a published release is verified without modification. |
 | Verify publication (`verify`) | tag runs | OpenPGP signature verifies with the pinned primary fingerprint and every listed checksum passes; live release body equals the notes; crates.io index and official archives equal the attested archives ([verify-published-crates.py](../scripts/verify-published-crates.py)); `gh attestation verify` for every attached file; docs.rs for each released crate (a still-pending build is reported as pending, not a pass); clean `cargo install --locked` of whichever of `libc-abi-tools`, `kernel-abi-tools` and `linux-abi-scan` are released, with `libc-abi` and `kernel-seccomp` reporting the release version. |
 
@@ -133,15 +133,19 @@ python3 scripts/release-signing.py verify --dist /path/to/downloaded-assets
 
 This imports only the committed public key into a temporary home, requires a
 valid signature with the pinned primary fingerprint reported by GnuPG's
-`VALIDSIG`, checks every line of `SHA256SUMS` with `sha256sum --check`, then kills
-the agent and deletes the home. The equivalent manual commands are in the
+`VALIDSIG` and exactly one good signature. It refuses revoked, bad, unknown-key
+and expired-signature statuses. An expired signing subkey is accepted only for
+a signature made strictly before that subkey's recorded expiry, preserving
+verification of older releases after routine rotation. It checks every line of `SHA256SUMS` with `sha256sum --check`, then kills
+the agent and deletes the home. Basic manual signature/checksum commands are in the
 [README](../README.md#verify-release-downloads). OpenPGP verification complements
 GitHub provenance and the crates.io checksum checks; it does not replace them.
 
 `RELEASE_SIGNING_KEY` (signing subkey only) and `RELEASE_SIGNING_PASSPHRASE`
 are owner-managed `crates-io` environment secrets. They are scoped only to the
 publish signing step. The passphrase goes to loopback pinentry over stdin,
-never a file or command argument. Failure stops the job before token minting
+never a file or command argument. No third-party action runs before signing;
+the runner's own rustup selects the publishing toolchain afterwards. Failure stops the job before token minting
 or publication. Only GnuPG preinstalled on `ubuntu-24.04` is used.
 The build/dry-run job runs `scripts/test-release-signing.py` using a generated,
 passphrase-protected throwaway key and subkey, including rejection by the real

@@ -193,13 +193,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@547f64eaa184fd62768e02b77019e5408713ca53 # 1.90.0
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release-${{ needs.gate.outputs.version }}
           path: ${{ runner.temp }}/dist
       - name: Re-check SHA256SUMS
         run: cd "$RUNNER_TEMP/dist" && sha256sum -c SHA256SUMS
+      # Always sign, including when every crate is already published.
+      - name: Sign and independently verify release checksums
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+          RELEASE_SIGNING_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_PASSPHRASE }}
+        run: python3 scripts/release-signing.py sign --dist "$RUNNER_TEMP/dist"
+      # Use the runner's rustup; no third-party action precedes secret use.
+      - name: Select the publishing toolchain with runner rustup
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal
+          rustup default 1.90.0
       # Nothing compiles in this job: it holds id-token and the crates-io
       # environment. `build` already built every packaged source; --no-verify
       # only assembles the archive, and cmp checks its bytes.
@@ -226,12 +236,6 @@ jobs:
           for crate in "${pending[@]}"; do
             cmp "target/package/$crate-$VERSION.crate" "$RUNNER_TEMP/dist/$crate-$VERSION.crate"
           done
-      # Always sign, including when every crate is already published.
-      - name: Sign and independently verify release checksums
-        env:
-          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
-          RELEASE_SIGNING_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_PASSPHRASE }}
-        run: python3 scripts/release-signing.py sign --dist "$RUNNER_TEMP/dist"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-signature-${{ needs.gate.outputs.version }}
