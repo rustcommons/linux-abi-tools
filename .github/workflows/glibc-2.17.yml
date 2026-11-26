@@ -10,6 +10,9 @@ on:
         description: cargo-libc integration branch or tested commit
         required: false
         default: ce9a7d51122f143091050d9e53b1222b77e67de1
+# Integration revisions must not access repository-wide Actions caches.
+# Provider directories and same-run artifacts do not use the cache service.
+cache-mode: none
 permissions:
   contents: read
 # PR numbers coalesce stale checks; unique run IDs preserve every non-PR run.

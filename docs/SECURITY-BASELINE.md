@@ -20,6 +20,24 @@ fixture reusable workflow uses a local caller-commit reference, not a mutable
 remote ref. Its two narrow zizmor `self-repository` exceptions preserve syntax
 supported by the pinned actionlint and Scorecard parsers.
 
+## Integration cache isolation
+
+The glibc integration workflow runs on main/tag pushes, pull requests and manual
+dispatches. Manual `companion_ref` may select unreviewed cargo-libc code, so
+[glibc-2.17.yml](../.github/workflows/glibc-2.17.yml) sets `cache-mode: none` for
+both `prepare` and `application`, on every trigger. This denies cache reads and
+writes in the job's cache token, including direct service access; read-only
+`contents` permission alone does not remove cache authority. Do not override
+this with write-capable job settings or introduce cross-run caches here.
+
+`ABI_PROVIDER_CACHE` is a directory under `$RUNNER_TEMP` on an ephemeral hosted
+runner. The prepare jobs upload provider inputs as run-scoped artifacts, and
+application jobs download them without a token or run ID selecting another run.
+Those directories/artifacts remain available within the run; they are separate
+from GitHub's repository cache service. Existing CodeQL default-setup caches
+are managed separately and cannot be read or written by this integration
+workflow. Action pins and the input-selected companion checkout are preserved.
+
 ## Runners, Actions and Rust toolchains
 
 - Jobs use explicit runner labels: `ubuntu-24.04` and `windows-2025`. Moving

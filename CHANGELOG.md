@@ -13,6 +13,11 @@ no tag was moved and no crate was republished.
 
 ## [Unreleased]
 
+Repository: glibc provider integration disables GitHub Actions cache access for
+all jobs and triggers, including manually selected companion revisions. Provider
+work directories and artifacts remain local to their workflow run. No package
+changes.
+
 Repository: release-signature verification accepts a valid signature from a new
 non-expiring signing subkey when an older sibling subkey has expired. Expiry
 checks apply only to `EXPKEYSIG`; historical pre-expiry signatures still verify.
